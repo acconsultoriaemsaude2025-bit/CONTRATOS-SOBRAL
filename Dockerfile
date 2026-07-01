@@ -12,4 +12,4 @@ COPY . .
 
 WORKDIR /app/app
 
-CMD gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120
+CMD gunicorn app:app --bind "0.0.0.0:$PORT" --workers 2 --timeout 120
