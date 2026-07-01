@@ -1,2 +1,5 @@
 [phases.setup]
-nixPkgs = ["postgresql"]
+nixPkgs = ["postgresql", "gcc", "python3"]
+
+[phases.install]
+cmds = ["pip install --upgrade pip setuptools wheel Cython", "pip install -r requirements.txt"]

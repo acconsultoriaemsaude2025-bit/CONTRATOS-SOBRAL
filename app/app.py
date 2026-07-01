@@ -291,6 +291,42 @@ def create_app():
             filtro_municipio=filtro_municipio,
         )
 
+    @app.route("/procedimentos/upload", methods=["POST"])
+    @login_required
+    def procedimentos_upload():
+        if not current_user.admin:
+            flash("Acesso negado.", "erro")
+            return redirect(url_for("procedimentos"))
+
+        arquivos = request.files.getlist("dbc_files")
+        if not arquivos or all(f.filename == "" for f in arquivos):
+            flash("Nenhum arquivo selecionado.", "erro")
+            return redirect(url_for("procedimentos"))
+
+        from scraper.siasus import processar_arquivo_stream
+        import tempfile, os
+
+        resultados = []
+        for f in arquivos:
+            if not f.filename:
+                continue
+            nome = f.filename.upper().replace(".DBC", "").replace(".dbc", "")
+            tmp_dbc = os.path.join(tempfile.gettempdir(), f.filename)
+            f.save(tmp_dbc)
+            try:
+                n = processar_arquivo_stream(nome, tmp_dbc, app.app_context())
+                if n >= 0:
+                    flash(f"{nome}: {n} registros importados.", "ok")
+                else:
+                    flash(f"{nome}: erro na importação.", "erro")
+            except Exception as e:
+                flash(f"{nome}: erro — {e}", "erro")
+            finally:
+                if os.path.exists(tmp_dbc):
+                    os.remove(tmp_dbc)
+
+        return redirect(url_for("procedimentos"))
+
     @app.route("/procedimentos/sync", methods=["POST"])
     @login_required
     def procedimentos_sync():

@@ -54,18 +54,28 @@
   </p>
 </div>
 
-{% if arquivos_novos %}
-<div class="importar-box">
-  <div>
-    <p><strong>📦 Novos arquivos disponíveis no DATASUS:</strong>
-      {% for a in arquivos_novos %}<span style="font-family:monospace;">{{ a }}</span>{% if not loop.last %}, {% endif %}{% endfor %}
-    </p>
-    <p style="margin-top:4px; color:#3730a3;">Execute <code>flask sync-sia</code> para importar os novos meses.</p>
+<!-- UPLOAD DE ARQUIVOS DBC -->
+{% if current_user.admin %}
+<div class="importar-box" style="flex-direction:column; gap:10px;">
+  <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+    <div>
+      <strong style="font-size:13px;">Importar arquivos DBC do SIASUS</strong>
+      <div style="font-size:12px; color:#64748b; margin-top:2px;">Selecione um ou mais arquivos PACE*.dbc do seu computador</div>
+    </div>
+    {% if arquivos_novos %}
+    <div style="font-size:12px; color:#3730a3;">
+      Novos no DATASUS: {% for a in arquivos_novos %}<span style="font-family:monospace;">{{ a }}</span>{% if not loop.last %}, {% endif %}{% endfor %}
+    </div>
+    {% endif %}
   </div>
-  <form method="post" action="/procedimentos/sync">
+  <form method="post" action="/procedimentos/upload" enctype="multipart/form-data"
+        style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token is defined else '' }}">
-    <button type="submit" style="padding:8px 16px; background:#2563a8; color:#fff; border:none; border-radius:6px; cursor:pointer; font-size:13px;">
-      ↻ Importar agora
+    <input type="file" name="dbc_files" multiple accept=".dbc,.DBC"
+           style="font-size:13px; border:1px solid #cbd5e1; border-radius:6px; padding:5px 8px; background:#fff;">
+    <button type="submit"
+            style="padding:7px 18px; background:#2563a8; color:#fff; border:none; border-radius:6px; cursor:pointer; font-size:13px; font-weight:600;">
+      ↑ Enviar e Importar
     </button>
   </form>
 </div>

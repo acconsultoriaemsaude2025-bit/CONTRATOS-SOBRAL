@@ -157,11 +157,17 @@ def _competencia(nome):
     return f"{ano4}{mes}"
 
 
-def processar_arquivo(nome, app_ctx):
+def processar_arquivo_stream(nome, dbc_path_externo, app_ctx):
+    """Processa um arquivo DBC já salvo em disco (upload pelo usuário)."""
+    return processar_arquivo(nome, app_ctx, dbc_externo=dbc_path_externo)
+
+
+def processar_arquivo(nome, app_ctx, dbc_externo=None):
     """
     Baixa, converte e importa um arquivo DBC usando leitura lazy (stream)
     para evitar carregar todo o arquivo na RAM.
     Retorna número de registros inseridos/atualizados.
+    dbc_externo: caminho de um DBC já salvo (upload web) — pula download.
     """
     from dbfread import DBF
     from collections import defaultdict
@@ -171,16 +177,21 @@ def processar_arquivo(nome, app_ctx):
     dbf_path = os.path.join(tmp_dir, f"{nome}.dbf")
 
     try:
-        # Usa arquivo local se disponível (evita download do FTP)
-        local_dbc = os.path.join(LOCAL_DBC_DIR, f"{nome}.dbc")
-        if not os.path.exists(local_dbc):
-            local_dbc = os.path.join(LOCAL_DBC_DIR, f"{nome.lower()}.dbc")
-        if os.path.exists(local_dbc):
-            log.info("[SIA] Usando arquivo local: %s", local_dbc)
-            dbc_path = local_dbc
+        if dbc_externo:
+            # Arquivo enviado via upload web
+            dbc_path = dbc_externo
             dbf_path = os.path.join(tmp_dir, f"{nome}.dbf")
         else:
-            baixar_arquivo(nome, dbc_path)
+            # Usa arquivo local se disponível (evita download do FTP)
+            local_dbc = os.path.join(LOCAL_DBC_DIR, f"{nome}.dbc")
+            if not os.path.exists(local_dbc):
+                local_dbc = os.path.join(LOCAL_DBC_DIR, f"{nome.lower()}.dbc")
+            if os.path.exists(local_dbc):
+                log.info("[SIA] Usando arquivo local: %s", local_dbc)
+                dbc_path = local_dbc
+                dbf_path = os.path.join(tmp_dir, f"{nome}.dbf")
+            else:
+                baixar_arquivo(nome, dbc_path)
 
         if not os.path.exists(dbf_path):
             log.info("[SIA] Convertendo DBC -> DBF ...")
