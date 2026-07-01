@@ -55,7 +55,6 @@
 </div>
 
 <!-- UPLOAD DE ARQUIVOS DBC -->
-{% if current_user.admin %}
 <div class="importar-box" style="flex-direction:column; gap:10px;">
   <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
     <div>
@@ -79,7 +78,6 @@
     </button>
   </form>
 </div>
-{% endif %}
 
 <!-- FILTROS -->
 <form method="get" action="/procedimentos" class="filtro-bar">
