@@ -35,6 +35,25 @@ TPFIN_LABELS = {
 
 _PROC_NOMES_CACHE = {}
 
+# Nomes dos procedimentos oftalmológicos mais comuns (fallback quando SIGTAP não disponível)
+_PROC_NOMES_FALLBACK = {
+    "0405050372": "FACOEMULSIFICAÇÃO C/ IMPLANTE DE LIO DOBRÁVEL",
+    "0405050020": "CAPSULOTOMIA A YAG LASER",
+    "0405050038": "CIRURGIA DE CATARATA EXTRACAPSULAR",
+    "0405050046": "CIRURGIA DE PTERÍGIO",
+    "0405050054": "CIRURGIA DE ESTRABISMO",
+    "0405050062": "CIRURGIA DE GLAUCOMA",
+    "0405050070": "VITRECTOMIA",
+    "0405010053": "CONSULTA OFTALMOLÓGICA",
+    "0301010064": "CONSULTA MÉDICA EM ATENÇÃO BÁSICA",
+    "0211070149": "TOMOGRAFIA DE COERÊNCIA ÓPTICA",
+    "0211070130": "RETINOGRAFIA COLORIDA",
+    "0211070121": "RETINOGRAFIA SEM COLORAÇÃO",
+    "0211060100": "CAMPO VISUAL",
+    "0211060053": "BIOMICROSCOPIA DE FUNDO DE OLHO",
+    "0211060038": "BIOMETRIA OCULAR",
+}
+
 
 def _carregar_sigtap():
     """Carrega nomes oficiais de procedimentos do S_PROCED.xltx."""
@@ -62,7 +81,7 @@ def _nome_proc(proc_id):
     if not _PROC_NOMES_CACHE:
         _carregar_sigtap()
     cod = str(proc_id).strip()
-    return _PROC_NOMES_CACHE.get(cod, cod)
+    return _PROC_NOMES_CACHE.get(cod) or _PROC_NOMES_FALLBACK.get(cod, cod)
 
 
 # Municípios — códigos IBGE 6 dígitos (primeiros 6 do código de 7 dígitos)
