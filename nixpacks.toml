@@ -2,4 +2,8 @@
 nixPkgs = ["postgresql", "gcc", "python3"]
 
 [phases.install]
-cmds = ["pip install --upgrade pip setuptools wheel Cython", "pip install -r requirements.txt"]
+cmds = [
+  "pip install --upgrade pip setuptools wheel Cython",
+  "pip install Flask==3.0.3 gunicorn==22.0.0 Flask-SQLAlchemy==3.1.1 Flask-Login==0.6.3 Flask-WTF==1.2.1 SQLAlchemy==2.0.34 pg8000==1.31.2 requests==2.32.3 beautifulsoup4==4.12.3 lxml==5.3.0 python-dotenv==1.0.1 Werkzeug==3.0.3 dbfread==2.0.7",
+  "pip install pyreaddbc==1.1.0 || echo 'pyreaddbc opcional nao instalado'"
+]
