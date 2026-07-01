@@ -25,12 +25,8 @@ LOCAL_DBC_DIR = r"C:\Users\daril\OneDrive\Documentos\Claude\Projects\CONTRATOS"
 SIGTAP_XLTX = os.path.join(LOCAL_DBC_DIR, "S_PROCED.xltx")
 
 TPFIN_LABELS = {
-    "01": "PAB",
-    "02": "FAEC",
     "04": "FAEC",
-    "05": "Epidemiologia",
     "06": "MAC",
-    "07": "INVESTIMENTO",
 }
 
 _PROC_NOMES_CACHE = {}
