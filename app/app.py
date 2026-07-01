@@ -151,7 +151,7 @@ def create_app():
                 func.sum(ProducaoSIA.qtd_aprovada).label("qtd_apr"),
                 func.sum(ProducaoSIA.val_produzido).label("val_prod"),
                 func.sum(ProducaoSIA.val_aprovado).label("val_apr"),
-                func.group_concat(ProducaoSIA.competencia).label("comps_raw"),
+                func.string_agg(ProducaoSIA.competencia, ',').label("comps_raw"),
             ).group_by(ProducaoSIA.proc_id, ProducaoSIA.nome_proc, ProducaoSIA.tpfin, ProducaoSIA.subfin)
 
             if filtro_ini:
