@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Editar Procedimento — {{ it.descricao[:40] }}{% endblock %}
+
+{% block head %}
+<style>
+.edit-wrap { max-width:620px; margin:0 auto; background:#fff; border-radius:12px; padding:28px; box-shadow:0 1px 4px rgba(0,0,0,.08); }
+.edit-wrap h2 { font-size:17px; font-weight:700; margin-bottom:20px; }
+.campo { margin-bottom:14px; }
+.campo label { display:block; font-size:11px; font-weight:600; color:#64748b; margin-bottom:4px; }
+.campo input, .campo select, .campo textarea { width:100%; padding:8px 12px; border:1px solid #e2e8f0; border-radius:6px; font-size:13px; }
+.campo input:focus { outline:none; border-color:#2563a8; box-shadow:0 0 0 3px rgba(37,99,168,.12); }
+.grid2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.grid3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; }
+.rodape { display:flex; gap:10px; justify-content:flex-end; margin-top:20px; padding-top:16px; border-top:1px solid #e2e8f0; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="margin-bottom:16px;">
+  <a href="{{ url_for('itens_contrato') }}" style="font-size:13px; color:#2563a8; text-decoration:none;">← Voltar para Itens do Contrato</a>
+</div>
+
+<div class="edit-wrap">
+  <h2>Editar Procedimento</h2>
+  <form method="post">
+    <div class="campo">
+      <label>Contrato</label>
+      <input type="text" name="contrato_nome" value="{{ it.contrato_nome or 'Contrato Estado CE' }}">
+    </div>
+    <div class="campo">
+      <label>Forma de Organização SIGTAP</label>
+      <input type="text" name="forma_org" value="{{ it.forma_org or '' }}" placeholder="Ex: 04.05.01 - Palpebras e Vias Lacrimais">
+    </div>
+    <div class="grid2">
+      <div class="campo">
+        <label>Código Catálogo</label>
+        <input type="text" name="cod_catalogo" value="{{ it.cod_catalogo or '' }}" placeholder="Ex: 1990729">
+      </div>
+      <div class="campo">
+        <label>Código SIGTAP</label>
+        <input type="text" name="cod_sigtap" value="{{ it.cod_sigtap or '' }}" placeholder="Ex: 04.05.01.001-0">
+      </div>
+    </div>
+    <div class="campo">
+      <label>Descrição do Procedimento *</label>
+      <input type="text" name="descricao" value="{{ it.descricao or '' }}" required>
+    </div>
+    <div class="grid3">
+      <div class="campo">
+        <label>Valor Unitário (R$)</label>
+        <input type="number" name="valor_unit" step="0.01" min="0" value="{{ it.valor_unit or 0 }}">
+      </div>
+      <div class="campo">
+        <label>Meta Anual (R$)</label>
+        <input type="number" name="meta_anual_val" step="0.01" min="0" value="{{ it.meta_anual_val or 0 }}">
+      </div>
+      <div class="campo">
+        <label>Ordem</label>
+        <input type="number" name="ordem" min="0" value="{{ it.ordem or 0 }}">
+      </div>
+    </div>
+    <div class="rodape">
+      <a href="{{ url_for('itens_contrato') }}" class="btn btn-cinza">Cancelar</a>
+      <button type="submit" class="btn btn-azul">Salvar Alterações</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

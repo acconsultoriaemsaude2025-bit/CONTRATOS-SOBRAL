@@ -1,0 +1,411 @@
+{% extends "base.html" %}
+{% block title %}Procedimentos Executados — C A DE SOUSA REZENDE{% endblock %}
+
+{% block head %}
+<script src="/static/js/chart.umd.min.js"></script>
+<style>
+  .filtro-bar { display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; margin-bottom:24px; }
+  .filtro-bar label { font-size:11px; color:#64748b; display:block; margin-bottom:3px; }
+  .filtro-bar select, .filtro-bar input { padding:6px 10px; border:1px solid #e2e8f0; border-radius:6px; font-size:13px; background:#fff; }
+  .filtro-bar button { padding:7px 18px; background:#2563a8; color:#fff; border:none; border-radius:6px; font-size:13px; cursor:pointer; }
+  .filtro-bar button:hover { background:#1d4e8f; }
+  .stat-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; margin-bottom:24px; }
+  .stat-box { background:#fff; border-radius:10px; border:1px solid #e2e8f0; padding:16px; }
+  .stat-box .lbl { font-size:11px; color:#64748b; text-transform:uppercase; letter-spacing:.5px; }
+  .stat-box .val { font-size:20px; font-weight:700; color:#1e293b; margin-top:4px; }
+  .stat-box .sub { font-size:11px; color:#94a3b8; margin-top:2px; }
+  .stat-box.azul  { border-top:3px solid #2563a8; }
+  .stat-box.verde { border-top:3px solid #16a34a; }
+  .stat-box.amar  { border-top:3px solid #ca8a04; }
+  .stat-box.cinza { border-top:3px solid #64748b; }
+  .chart-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:24px; }
+  @media(max-width:720px){ .chart-grid { grid-template-columns:1fr; } }
+  .chart-card { background:#fff; border:1px solid #e2e8f0; border-radius:10px; padding:16px; }
+  .chart-card h3 { font-size:13px; font-weight:600; color:#374151; margin:0 0 12px; }
+  table.proc-table { width:100%; border-collapse:collapse; font-size:12px; }
+  table.proc-table th { background:#f8fafc; padding:8px 10px; text-align:left; font-size:11px;
+    color:#64748b; text-transform:uppercase; letter-spacing:.4px; border-bottom:2px solid #e2e8f0; }
+  table.proc-table td { padding:8px 10px; border-bottom:1px solid #f1f5f9; color:#374151; vertical-align:top; }
+  table.proc-table tr:hover td { background:#f8fafc; }
+  .num { text-align:right; font-variant-numeric:tabular-nums; }
+  .badge-fin { display:inline-block; padding:2px 7px; border-radius:4px; font-size:10px; font-weight:600; }
+  .fin-06 { background:#dbeafe; color:#1d4ed8; }
+  .fin-02 { background:#f0fdf4; color:#15803d; }
+  .fin-01 { background:#fef9c3; color:#854d0e; }
+  .fin-04 { background:#fce7f3; color:#9d174d; }
+  .fin-other { background:#f1f5f9; color:#475569; }
+  .sem-dados { text-align:center; padding:60px 20px; color:#94a3b8; font-size:14px; }
+  .importar-box { background:#eff6ff; border:1px solid #bfdbfe; border-radius:10px; padding:16px 20px;
+    margin-bottom:20px; display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
+  .importar-box p { margin:0; font-size:13px; color:#1e40af; }
+  .tag-novo { background:#fef9c3; border:1px solid #fde047; border-radius:12px; padding:2px 8px;
+    font-size:10px; font-weight:700; color:#854d0e; margin-left:6px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="margin-bottom:20px;">
+  <h1 style="font-size:20px; font-weight:700; color:#1e293b;">Procedimentos Executados</h1>
+  <p style="font-size:13px; color:#64748b; margin:4px 0 0;">
+    Produção ambulatorial BPA-I — C A DE SOUSA REZENDE · CNPJ 15.061.733/0001-03
+    {% if ultima_comp %}
+    · <strong>Última competência importada: {{ ultima_comp[:4] }}/{{ ultima_comp[4:] }}</strong>
+    {% endif %}
+  </p>
+</div>
+
+{% if arquivos_novos %}
+<div class="importar-box">
+  <div>
+    <p><strong>📦 Novos arquivos disponíveis no DATASUS:</strong>
+      {% for a in arquivos_novos %}<span style="font-family:monospace;">{{ a }}</span>{% if not loop.last %}, {% endif %}{% endfor %}
+    </p>
+    <p style="margin-top:4px; color:#3730a3;">Execute <code>flask sync-sia</code> para importar os novos meses.</p>
+  </div>
+  <form method="post" action="/procedimentos/sync">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token is defined else '' }}">
+    <button type="submit" style="padding:8px 16px; background:#2563a8; color:#fff; border:none; border-radius:6px; cursor:pointer; font-size:13px;">
+      ↻ Importar agora
+    </button>
+  </form>
+</div>
+{% endif %}
+
+<!-- FILTROS -->
+<form method="get" action="/procedimentos" class="filtro-bar">
+  <div>
+    <label>Competência inicial</label>
+    <select name="comp_ini">
+      <option value="">Todas</option>
+      {% for c in competencias %}
+      <option value="{{ c }}" {% if c == filtro_ini %}selected{% endif %}>
+        {{ c[:4] }}/{{ c[4:] }}
+      </option>
+      {% endfor %}
+    </select>
+  </div>
+  <div>
+    <label>Competência final</label>
+    <select name="comp_fim">
+      <option value="">Todas</option>
+      {% for c in competencias %}
+      <option value="{{ c }}" {% if c == filtro_fim %}selected{% endif %}>
+        {{ c[:4] }}/{{ c[4:] }}
+      </option>
+      {% endfor %}
+    </select>
+  </div>
+  <div>
+    <label>Financiamento</label>
+    <select name="tpfin">
+      <option value="">Todos</option>
+      {% for k,v in tpfin_opts.items() %}
+      <option value="{{ k }}" {% if k == filtro_fin %}selected{% endif %}>{{ k }} – {{ v }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div>
+    <label>Município Origem</label>
+    <select name="municipio">
+      <option value="">Todos</option>
+      {% for m in municipios_origem %}
+      <option value="{{ m.cod }}" {% if m.cod == filtro_municipio %}selected{% endif %}>
+        {{ m.nom }} ({{ m.qtd | int }})
+      </option>
+      {% endfor %}
+    </select>
+  </div>
+  <div>
+    <label>Procedimento</label>
+    <input type="text" name="proc" value="{{ filtro_proc }}" placeholder="código ou nome..." style="width:180px;">
+  </div>
+  <div>
+    <button type="submit">Filtrar</button>
+    <a href="/procedimentos" style="margin-left:8px; font-size:12px; color:#64748b;">Limpar</a>
+  </div>
+</form>
+
+{% if not rows %}
+<div class="sem-dados">
+  {% if not arquivos_importados %}
+  <div style="font-size:40px;">📋</div>
+  <p style="font-weight:600; color:#374151; margin:12px 0 4px;">Nenhum dado importado ainda</p>
+  <p>Execute o comando abaixo no terminal do servidor para importar a produção:</p>
+  <code style="background:#f1f5f9; padding:6px 12px; border-radius:6px; display:inline-block; margin-top:8px;">
+    flask sync-sia
+  </code>
+  {% else %}
+  <p>Nenhum procedimento encontrado para os filtros selecionados.</p>
+  {% endif %}
+</div>
+{% else %}
+
+<!-- CARDS DE RESUMO -->
+<div class="stat-grid">
+  <div class="stat-box azul">
+    <div class="lbl">Procedimentos distintos</div>
+    <div class="val">{{ total_procs }}</div>
+    <div class="sub">tipos realizados</div>
+  </div>
+  <div class="stat-box azul">
+    <div class="lbl">Total produzido</div>
+    <div class="val">{{ "{:,.0f}".format(total_qtd_prod).replace(",",".") }}</div>
+    <div class="sub">unidades / atendimentos</div>
+  </div>
+  <div class="stat-box verde">
+    <div class="lbl">Total aprovado</div>
+    <div class="val">{{ "{:,.0f}".format(total_qtd_apr).replace(",",".") }}</div>
+    <div class="sub">pelo SUS</div>
+  </div>
+  <div class="stat-box amar">
+    <div class="lbl">Valor produzido</div>
+    <div class="val" style="font-size:16px;">{{ total_val_prod | brl }}</div>
+    <div class="sub">apresentado ao SIA</div>
+  </div>
+  <div class="stat-box verde">
+    <div class="lbl">Valor aprovado</div>
+    <div class="val" style="font-size:16px;">{{ total_val_apr | brl }}</div>
+    <div class="sub">homologado SUS</div>
+  </div>
+  <div class="stat-box cinza">
+    <div class="lbl">Taxa de aprovação</div>
+    <div class="val">{{ "%.1f"|format(taxa_apr) }}%</div>
+    <div class="sub">sobre o produzido</div>
+  </div>
+</div>
+
+<!-- GRÁFICOS -->
+<div class="chart-grid">
+  <div class="chart-card">
+    <h3>Produção mensal (valor aprovado)</h3>
+    <canvas id="chartMensal" style="max-height:200px;"></canvas>
+  </div>
+  <div class="chart-card">
+    <h3>Distribuição por financiamento (qtd aprovada)</h3>
+    <canvas id="chartFin" style="max-height:200px;"></canvas>
+  </div>
+  <div class="chart-card" style="grid-column:1/-1;">
+    <h3>Top 10 procedimentos por valor aprovado</h3>
+    <canvas id="chartProc" style="max-height:220px;"></canvas>
+  </div>
+</div>
+
+<!-- TABELA DE PROCEDIMENTOS -->
+<div style="background:#fff; border:1px solid #e2e8f0; border-radius:10px; overflow:hidden;">
+  <div style="display:flex; justify-content:space-between; align-items:center; padding:14px 16px; border-bottom:1px solid #e2e8f0;">
+    <h2 style="font-size:14px; font-weight:600; margin:0;">Detalhamento por Procedimento</h2>
+    <span style="font-size:12px; color:#64748b;">{{ rows|length }} linha(s)</span>
+  </div>
+  <div style="overflow-x:auto;">
+  <table class="proc-table">
+    <thead>
+      <tr>
+        <th>Procedimento</th>
+        <th>Nome</th>
+        <th>Financiamento</th>
+        <th class="num">Qtd Produzida</th>
+        <th class="num">Qtd Aprovada</th>
+        <th class="num">% Aprov.</th>
+        <th class="num">Valor Produzido</th>
+        <th class="num">Valor Aprovado</th>
+        <th>Competências</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for r in rows %}
+    <tr>
+      <td style="font-family:monospace; font-size:11px; color:#475569;">{{ r.proc_id }}</td>
+      <td style="max-width:260px;">{{ r.nome_proc or r.proc_id }}</td>
+      <td>
+        <span class="badge-fin fin-{{ r.tpfin }}">
+          {{ tpfin_opts.get(r.tpfin, r.tpfin) }} ({{ r.tpfin }})
+        </span>
+      </td>
+      <td class="num">{{ "{:,.0f}".format(r.qtd_prod or 0).replace(",",".") }}</td>
+      <td class="num">{{ "{:,.0f}".format(r.qtd_apr or 0).replace(",",".") }}</td>
+      <td class="num">
+        {% set pct = (r.qtd_apr / r.qtd_prod * 100) if r.qtd_prod else 0 %}
+        <span style="color:{% if pct >= 90 %}#16a34a{% elif pct >= 70 %}#ca8a04{% else %}#dc2626{% endif %}; font-weight:600;">
+          {{ "%.0f"|format(pct) }}%
+        </span>
+      </td>
+      <td class="num">{{ r.val_prod | brl }}</td>
+      <td class="num" style="font-weight:600;">{{ r.val_apr | brl }}</td>
+      <td style="font-size:11px; color:#64748b;">
+        {% for comp in r.competencias %}
+        <span style="white-space:nowrap;">{{ comp[:4] }}/{{ comp[4:] }}</span>{% if not loop.last %}, {% endif %}
+        {% endfor %}
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr style="background:#f8fafc; font-weight:700;">
+        <td colspan="3">TOTAL</td>
+        <td class="num">{{ "{:,.0f}".format(total_qtd_prod).replace(",",".") }}</td>
+        <td class="num">{{ "{:,.0f}".format(total_qtd_apr).replace(",",".") }}</td>
+        <td class="num">{{ "%.0f"|format(taxa_apr) }}%</td>
+        <td class="num">{{ total_val_prod | brl }}</td>
+        <td class="num">{{ total_val_apr | brl }}</td>
+        <td></td>
+      </tr>
+    </tfoot>
+  </table>
+  </div>
+</div>
+
+{% if origem_rows %}
+<div style="background:#fff; border:1px solid #e2e8f0; border-radius:10px; padding:20px; margin-top:24px;">
+  <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;">
+    <h2 style="font-size:14px; font-weight:600; margin:0;">Origem dos Pacientes — Município de Residência</h2>
+    <span style="font-size:11px; color:#64748b;">{{ origem_rows|length }} município(s) | Campo PA_MUNPCN</span>
+  </div>
+
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+    <!-- Tabela -->
+    <div style="overflow-x:auto;">
+      <table class="proc-table">
+        <thead>
+          <tr>
+            <th>Cód. IBGE</th>
+            <th>Município</th>
+            <th class="num">Atend.</th>
+            <th class="num">Valor Apr.</th>
+            <th class="num">%</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% set total_orig = origem_rows | sum(attribute='qtd') %}
+          {% for r in origem_rows %}
+          {% set pct = (r.qtd / total_orig * 100) if total_orig else 0 %}
+          <tr>
+            <td style="font-family:monospace; color:#64748b; font-size:11px;">{{ r.municipio_cod }}</td>
+            <td style="font-weight:{% if loop.index == 1 %}600{% else %}400{% endif %};">
+              {{ r.municipio_nom or r.municipio_cod }}
+            </td>
+            <td class="num">{{ r.qtd | int | format_number }}</td>
+            <td class="num">{{ r.val | float | brl }}</td>
+            <td class="num" style="min-width:90px;">
+              <div style="display:flex; align-items:center; gap:6px;">
+                <div style="flex:1; height:6px; background:#e2e8f0; border-radius:3px; overflow:hidden;">
+                  <div style="width:{{ [pct,100]|min }}%; height:100%; background:#2563a8; border-radius:3px;"></div>
+                </div>
+                <span style="font-size:11px; color:#374151; min-width:32px; text-align:right;">{{ '%.1f'|format(pct) }}%</span>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot>
+          <tr style="font-weight:600; background:#f8fafc;">
+            <td colspan="2">TOTAL</td>
+            <td class="num">{{ total_orig | int | format_number }}</td>
+            <td class="num">{{ origem_rows | sum(attribute='val') | float | brl }}</td>
+            <td class="num">100%</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+
+    <!-- Gráfico pizza -->
+    <div style="display:flex; flex-direction:column; align-items:center; justify-content:center;">
+      <canvas id="chartOrigem" style="max-height:280px;"></canvas>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% endif %}
+
+<script>
+const origem_labels = {{ origem_rows | map(attribute='municipio_nom') | list | tojson }};
+const origem_qtd    = {{ origem_rows | map(attribute='qtd') | map('int') | list | tojson }};
+
+{% if origem_rows %}
+const coresOrigem = ['#2563a8','#16a34a','#ca8a04','#dc2626','#7c3aed','#0891b2','#db2777','#65a30d','#9333ea','#ea580c'];
+new Chart(document.getElementById('chartOrigem'), {
+  type: 'doughnut',
+  data: {
+    labels: origem_labels,
+    datasets: [{ data: origem_qtd, backgroundColor: coresOrigem, borderWidth: 2 }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: true,
+    plugins: { legend: { position: 'right', labels: { font: { size: 11 }, boxWidth: 14 } } }
+  }
+});
+{% endif %}
+
+const mensal_labels = {{ mensal_labels | tojson }};
+const mensal_val    = {{ mensal_val | tojson }};
+const fin_labels    = {{ fin_labels | tojson }};
+const fin_qtd       = {{ fin_qtd | tojson }};
+const top10_labels  = {{ top10_labels | tojson }};
+const top10_val     = {{ top10_val | tojson }};
+
+{% if rows %}
+// Gráfico mensal
+new Chart(document.getElementById('chartMensal'), {
+  type: 'bar',
+  data: {
+    labels: mensal_labels,
+    datasets: [{
+      label: 'Valor Aprovado',
+      data: mensal_val,
+      backgroundColor: '#2563a8bb',
+      borderRadius: 4,
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: true,
+    plugins: { legend: { display: false } },
+    scales: {
+      y: { ticks: { callback: v => 'R$' + (v/1000).toFixed(0) + 'k', font: { size: 10 } } },
+      x: { ticks: { font: { size: 10 } } }
+    }
+  }
+});
+
+// Gráfico por financiamento
+const coresFin = ['#2563a8','#16a34a','#ca8a04','#dc2626','#7c3aed','#0891b2'];
+new Chart(document.getElementById('chartFin'), {
+  type: 'doughnut',
+  data: {
+    labels: fin_labels,
+    datasets: [{
+      data: fin_qtd,
+      backgroundColor: coresFin,
+      borderWidth: 2,
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: true,
+    plugins: { legend: { position: 'right', labels: { font: { size: 11 }, boxWidth: 14 } } },
+  }
+});
+
+// Top 10 procedimentos
+new Chart(document.getElementById('chartProc'), {
+  type: 'bar',
+  data: {
+    labels: top10_labels,
+    datasets: [{
+      label: 'Valor Aprovado (R$)',
+      data: top10_val,
+      backgroundColor: '#16a34abb',
+      borderRadius: 4,
+    }]
+  },
+  options: {
+    indexAxis: 'y',
+    responsive: true, maintainAspectRatio: true,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { ticks: { callback: v => 'R$' + (v/1000).toFixed(0) + 'k', font: { size: 10 } } },
+      y: { ticks: { font: { size: 10 } } }
+    }
+  }
+});
+{% endif %}
+</script>
+{% endblock %}

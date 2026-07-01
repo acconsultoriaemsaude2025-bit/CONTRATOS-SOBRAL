@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}Editar Licença — {{ l.tipo }}{% endblock %}
+
+{% block head %}
+<style>
+.edit-wrap { max-width:600px; margin:0 auto; background:#fff; border-radius:12px; padding:28px; box-shadow:0 1px 4px rgba(0,0,0,.08); }
+.edit-wrap h2 { font-size:17px; font-weight:700; margin-bottom:20px; }
+.campo { margin-bottom:14px; }
+.campo label { display:block; font-size:11px; font-weight:600; color:#64748b; margin-bottom:4px; }
+.campo input, .campo select, .campo textarea { width:100%; padding:8px 12px; border:1px solid #e2e8f0; border-radius:6px; font-size:13px; }
+.campo textarea { resize:vertical; min-height:70px; }
+.campo input:focus, .campo select:focus { outline:none; border-color:#2563a8; box-shadow:0 0 0 3px rgba(37,99,168,.12); }
+.grid2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.rodape { display:flex; gap:10px; justify-content:flex-end; margin-top:20px; padding-top:16px; border-top:1px solid #e2e8f0; }
+.arquivo-atual { background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px; padding:8px 12px; font-size:12px; display:flex; align-items:center; gap:8px; margin-top:6px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="margin-bottom:16px;">
+  <a href="{{ url_for('licencas') }}" style="font-size:13px; color:#2563a8; text-decoration:none;">← Voltar para Licenças</a>
+</div>
+
+<div class="edit-wrap">
+  <h2>Editar Licença / Alvará</h2>
+  <form method="post" enctype="multipart/form-data">
+    <div class="campo">
+      <label>Tipo / Nome *</label>
+      <input type="text" name="tipo" required value="{{ l.tipo }}">
+    </div>
+    <div class="grid2">
+      <div class="campo">
+        <label>Categoria</label>
+        <select name="categoria">
+          <option value="">Selecione...</option>
+          {% for cat in categorias_padrao %}
+          <option value="{{ cat }}" {% if l.categoria == cat %}selected{% endif %}>{{ cat|capitalize }}</option>
+          {% endfor %}
+          {% if l.categoria and l.categoria not in categorias_padrao %}
+          <option value="{{ l.categoria }}" selected>{{ l.categoria }}</option>
+          {% endif %}
+        </select>
+      </div>
+      <div class="campo">
+        <label>Situação</label>
+        <select name="situacao">
+          {% for s in ['vigente','renovando','vencida','cancelada'] %}
+          <option value="{{ s }}" {% if l.situacao == s %}selected{% endif %}>{{ s|capitalize }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+    <div class="campo">
+      <label>Órgão Emissor</label>
+      <input type="text" name="orgao_emissor" value="{{ l.orgao_emissor or '' }}">
+    </div>
+    <div class="campo">
+      <label>Número do Documento</label>
+      <input type="text" name="numero" value="{{ l.numero or '' }}">
+    </div>
+    <div class="grid2">
+      <div class="campo">
+        <label>Data de Emissão</label>
+        <input type="date" name="data_emissao" value="{{ l.data_emissao.isoformat() if l.data_emissao else '' }}">
+      </div>
+      <div class="campo">
+        <label>Data de Vencimento</label>
+        <input type="date" name="data_vencimento" value="{{ l.data_vencimento.isoformat() if l.data_vencimento else '' }}">
+      </div>
+    </div>
+    <div class="campo">
+      <label>Alertar quantos dias antes do vencimento?</label>
+      <select name="dias_antecedencia">
+        {% for d in [30,60,90,120,180] %}
+        <option value="{{ d }}" {% if l.dias_antecedencia == d %}selected{% endif %}>{{ d }} dias</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="campo">
+      <label>Observações</label>
+      <textarea name="observacoes">{{ l.observacoes or '' }}</textarea>
+    </div>
+    <div class="campo">
+      <label>Anexar Novo Documento (substitui o atual)</label>
+      <input type="file" name="arquivo" accept=".pdf,.jpg,.jpeg,.png">
+      {% if l.arquivo_nome %}
+      <div class="arquivo-atual">
+        📄 Atual: <strong>{{ l.arquivo_nome }}</strong>
+        <a href="{{ url_for('licenca_arquivo', lid=l.id) }}" target="_blank" style="color:#2563a8; margin-left:auto;">Ver</a>
+      </div>
+      {% endif %}
+    </div>
+    <div class="rodape">
+      <a href="{{ url_for('licencas') }}" class="btn btn-cinza">Cancelar</a>
+      <button type="submit" class="btn btn-azul">Salvar Alterações</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,319 @@
+{% extends "base.html" %}
+{% block title %}Eletivas Federais 2026{% endblock %}
+
+{% block head %}
+<script src="/static/js/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
+  <div>
+    <h1 style="font-size:22px; font-weight:700; margin:0;">Eletivas Federais 2026</h1>
+    <div style="font-size:13px; color:#64748b; margin-top:4px;">Pactuação · Julho a Dezembro/2026</div>
+  </div>
+  <!-- Seletor de competência -->
+  <div style="display:flex; align-items:center; gap:8px;">
+    <label style="font-size:13px; color:#475569; font-weight:600;">Competência:</label>
+    <select id="sel-comp" onchange="trocarComp(this.value)"
+      style="padding:6px 10px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px;">
+      {% for c in competencias_disp %}
+      <option value="{{ c }}" {% if c == comp_sel %}selected{% endif %}>
+        {{ c[4:6] }}/{{ c[0:4] }}
+      </option>
+      {% endfor %}
+    </select>
+    <button onclick="salvarLancamentos()"
+      style="padding:6px 16px; background:#2563a8; color:#fff; border:none; border-radius:6px; font-size:13px; font-weight:600; cursor:pointer;">
+      Salvar Mês
+    </button>
+  </div>
+</div>
+
+<!-- CARDS RESUMO -->
+<div class="cards" style="margin-bottom:24px;">
+  <div class="card" style="border-left:4px solid #2563a8;">
+    <div class="rotulo">Total Pactuado</div>
+    <div class="valor" style="font-size:20px;">{{ total_val | brl }}</div>
+    <div class="sub">{{ total_qtd | int }} procedimentos · jul–dez/2026</div>
+  </div>
+  <div class="card verde" style="border-left:4px solid #16a34a;">
+    <div class="rotulo">Total Realizado (acumulado)</div>
+    <div class="valor" style="font-size:20px;">{{ total_real_val | brl }}</div>
+    <div class="sub">{{ total_real_qtd }} procedimentos realizados</div>
+  </div>
+  <div class="card amarelo" style="border-left:4px solid #d97706;">
+    <div class="rotulo">Realizado em {{ comp_sel[4:6] }}/{{ comp_sel[0:4] }}</div>
+    <div class="valor" style="font-size:20px;">{{ total_mes_val | brl }}</div>
+    <div class="sub">{{ total_mes_qtd }} procedimentos no mês</div>
+  </div>
+  <div class="card" style="border-left:4px solid #7c3aed;">
+    <div class="rotulo">% Execução Geral</div>
+    {% set pct_geral = (total_real_val / total_val * 100) if total_val > 0 else 0 %}
+    <div class="valor" style="font-size:20px; color:{% if pct_geral >= 90 %}#16a34a{% elif pct_geral >= 50 %}#d97706{% else %}#2563a8{% endif %};">
+      {{ "%.1f"|format(pct_geral) }}%
+    </div>
+    <div class="sub">do valor pactuado</div>
+  </div>
+</div>
+
+<!-- ===== DASHBOARD ===== -->
+<div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:24px;">
+
+  <!-- Execução por Município -->
+  <div class="card" style="padding:16px 20px;">
+    <div style="font-size:12px; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:.05em; margin-bottom:14px;">Execução por Município</div>
+    {% for m in dash_municipios %}
+    {% set pct = m.pct %}
+    <div style="margin-bottom:12px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+        <span style="font-size:13px; font-weight:600; color:#1e293b;">{{ m.nome }}</span>
+        <div style="text-align:right;">
+          <span style="font-size:12px; font-weight:700; color:{% if pct >= 90 %}#16a34a{% elif pct >= 50 %}#d97706{% else %}#2563a8{% endif %};">{{ pct }}%</span>
+          <span style="font-size:11px; color:#94a3b8; margin-left:6px;">{{ m.real_val | brl }} / {{ m.pac_val | brl }}</span>
+        </div>
+      </div>
+      <div style="height:8px; background:#e2e8f0; border-radius:4px; overflow:hidden;">
+        <div style="height:100%; width:{{ pct }}%; background:{% if pct >= 90 %}#16a34a{% elif pct >= 50 %}#d97706{% else %}#2563a8{% endif %}; border-radius:4px; transition:width .4s;"></div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Execução por Procedimento -->
+  <div style="display:flex; flex-direction:column; gap:16px;">
+    {% for cod, pr in procs_dash.items() %}
+    {% set pct_pr = (pr.real_val / pr.pac_val * 100) if pr.pac_val > 0 else 0 %}
+    <div class="card" style="padding:16px 20px;">
+      <div style="font-size:12px; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:.05em; margin-bottom:10px;">{{ pr.nome }}</div>
+      <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:8px;">
+        <div>
+          <div style="font-size:20px; font-weight:700; color:#1e293b;">{{ pr.real_qtd | int }} <span style="font-size:13px; color:#94a3b8; font-weight:400;">/ {{ pr.pac_qtd | int }} proc.</span></div>
+          <div style="font-size:12px; color:#64748b; margin-top:2px;">{{ pr.real_val | brl }} / {{ pr.pac_val | brl }}</div>
+        </div>
+        <div style="font-size:22px; font-weight:800; color:{% if pct_pr >= 90 %}#16a34a{% elif pct_pr >= 50 %}#d97706{% else %}#2563a8{% endif %};">
+          {{ "%.1f"|format(pct_pr) }}%
+        </div>
+      </div>
+      <div style="height:10px; background:#e2e8f0; border-radius:5px; overflow:hidden;">
+        <div style="height:100%; width:{{ "%.1f"|format(pct_pr) }}%; background:{% if pct_pr >= 90 %}#16a34a{% elif pct_pr >= 50 %}#d97706{% else %}#2563a8{% endif %}; border-radius:5px;"></div>
+      </div>
+    </div>
+    {% endfor %}
+
+    <!-- Evolução mensal -->
+    <div class="card" style="padding:16px 20px; flex:1;">
+      <div style="font-size:12px; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:.05em; margin-bottom:10px;">Evolução Mensal (jul–dez/2026)</div>
+      <canvas id="chart-evolucao" style="max-height:130px;"></canvas>
+    </div>
+  </div>
+
+</div>
+<!-- ===== FIM DASHBOARD ===== -->
+
+<!-- TABELAS POR MUNICÍPIO -->
+{% for municipio, itens in por_municipio.items() %}
+<div class="tabela-wrap" style="margin-bottom:20px;">
+  <div class="tabela-header" style="background:#f1f5f9; padding:10px 16px;">
+    <h3 style="margin:0; font-size:14px; font-weight:700; color:#1e293b;">{{ municipio }}</h3>
+    <span style="font-size:12px; color:#64748b; margin-left:auto;">
+      Pactuado: {{ itens | sum(attribute='valor_total') | brl }}
+    </span>
+  </div>
+  <table style="width:100%; table-layout:fixed;">
+    <colgroup>
+      <col style="width:38%"><!-- Procedimento -->
+      <col style="width:10%"><!-- Qtd. Pac. -->
+      <col style="width:13%"><!-- Val. Pactuado -->
+      <col style="width:14%"><!-- Realizado acum. -->
+      <col style="width:10%"><!-- Qtd. mês -->
+      <col style="width:12%"><!-- Val. mês -->
+      <col style="width:7%"> <!-- % -->
+    </colgroup>
+    <thead>
+      <tr>
+        <th>Procedimento</th>
+        <th class="num">Qtd.<br>Pactuada</th>
+        <th class="num">Val. Pactuado</th>
+        <th class="num">Realizado<br>(acum.)</th>
+        <th class="num" style="background:#fefce8;">Qtd.<br>{{ comp_sel[4:6] }}/{{ comp_sel[0:4] }}</th>
+        <th class="num" style="background:#fefce8;">Val. Mês</th>
+        <th class="num">%</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for p in itens %}
+      {% set r = realizados_mes.get(p.id) %}
+      {% set mes_qtd = r.qtd_realizada if r else 0 %}
+      {% set mes_val = r.val_realizado | float if r else 0 %}
+      <tr>
+        <td style="padding:10px 12px;">
+          <div style="font-family:monospace; font-size:11px; color:#94a3b8; margin-bottom:2px;">{{ p.proc_cod }}</div>
+          <div style="font-size:13px; font-weight:600; line-height:1.3;">{{ p.proc_nome }}</div>
+          <div style="font-size:11px; color:#64748b; margin-top:2px;">Unit.: {{ p.valor_unit | brl }}</div>
+        </td>
+        <td class="num" style="font-weight:700; font-size:14px;">{{ p.qtd_fisica | int }}</td>
+        <td class="num">{{ p.valor_total | brl }}</td>
+        <td class="num">
+          <span style="font-weight:700; color:#16a34a; font-size:14px;">{{ p.total_realizado_qtd }}</span><br>
+          <span style="font-size:11px; color:#64748b;">{{ p.total_realizado_val | brl }}</span>
+        </td>
+        <td class="num" style="background:#fefce8; padding:8px;">
+          <input type="number" min="0"
+            id="qtd_{{ p.id }}"
+            data-id="{{ p.id }}"
+            value="{{ mes_qtd }}"
+            oninput="calcValFed({{ p.id }}, {{ p.valor_unit | float }})"
+            style="width:64px; text-align:right; padding:5px 6px; border:1px solid #cbd5e1;
+                   border-radius:4px; font-size:14px; font-weight:600;">
+        </td>
+        <td class="num" style="background:#fefce8;">
+          <span id="val_{{ p.id }}" style="font-size:13px; font-weight:600; color:#2563a8;">{{ mes_val | brl }}</span>
+          <input type="hidden" id="hval_{{ p.id }}" value="{{ mes_val }}">
+        </td>
+        <td class="num">
+          <span style="font-size:13px; font-weight:700;
+            color:{% if p.pct_execucao >= 90 %}#16a34a{% elif p.pct_execucao >= 50 %}#d97706{% else %}#64748b{% endif %};">
+            {{ p.pct_execucao }}%
+          </span>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr style="background:#f1f5f9; font-weight:700; font-size:13px;">
+        <td style="padding:10px 12px; color:#374151;">Total {{ municipio }}</td>
+        <td class="num">{{ itens | sum(attribute='qtd_fisica') | int }}</td>
+        <td class="num">{{ itens | sum(attribute='valor_total') | brl }}</td>
+        <td class="num" style="color:#16a34a;">{{ itens | sum(attribute='total_realizado_qtd') }}</td>
+        <td class="num" style="background:#fef9c3;" id="fmes_qtd_{{ loop.index }}">—</td>
+        <td class="num" style="background:#fef9c3;" id="fmes_val_{{ loop.index }}">—</td>
+        <td class="num">—</td>
+      </tr>
+    </tfoot>
+  </table>
+</div>
+{% endfor %}
+
+<!-- TOTALIZADOR GERAL -->
+<div class="tabela-wrap" style="margin-bottom:24px;">
+  <table>
+    <tfoot>
+      <tr style="background:#1e293b; color:#fff; font-weight:700; font-size:14px;">
+        <td style="padding:12px 16px; width:40%;">TOTAL GERAL</td>
+        <td class="num" style="padding:12px 16px;">Pac: {{ total_qtd | int }} proc · {{ total_val | brl }}</td>
+        <td class="num" style="padding:12px 16px; color:#86efac;">Real: {{ total_real_qtd }} proc · {{ total_real_val | brl }}</td>
+        <td class="num" style="padding:12px 16px;" id="rodape-mes">Mês: —</td>
+      </tr>
+    </tfoot>
+  </table>
+</div>
+
+<div id="msg-salvo" style="display:none; position:fixed; bottom:24px; right:24px;
+  background:#16a34a; color:#fff; padding:12px 20px; border-radius:8px; font-weight:600;
+  font-size:14px; box-shadow:0 4px 12px rgba(0,0,0,.2); z-index:999;">
+  Lançamentos salvos com sucesso!
+</div>
+
+<script>
+const COMP_SEL = "{{ comp_sel }}";
+
+// Gráfico evolução mensal
+(function() {
+  const labels = [{% for c in competencias_disp %}"{{ c[4:6] }}/{{ c[0:4] }}"{% if not loop.last %},{% endif %}{% endfor %}];
+  const valores = [{% for c in competencias_disp %}{{ evolucao_mensal[c] | round(2) }}{% if not loop.last %},{% endif %}{% endfor %}];
+  const ctx = document.getElementById('chart-evolucao');
+  if (!ctx) return;
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Realizado (R$)',
+        data: valores,
+        backgroundColor: valores.map(v => v > 0 ? '#2563a8' : '#e2e8f0'),
+        borderRadius: 4,
+        borderSkipped: false,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => 'R$ ' + ctx.parsed.y.toLocaleString('pt-BR', {minimumFractionDigits:2})
+          }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: {
+            font: { size: 10 },
+            callback: v => 'R$ ' + (v/1000).toFixed(0) + 'k'
+          },
+          grid: { color: '#f1f5f9' }
+        },
+        x: { ticks: { font: { size: 11 } }, grid: { display: false } }
+      }
+    }
+  });
+})();
+
+function brl(v) {
+  return v.toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
+}
+
+function calcValFed(id, valorUnit) {
+  const qtd = parseInt(document.getElementById('qtd_' + id).value) || 0;
+  const val = qtd * valorUnit;
+  document.getElementById('hval_' + id).value = val.toFixed(2);
+  document.getElementById('val_' + id).textContent = brl(val);
+  atualizarRodapeFed();
+}
+
+function atualizarRodapeFed() {
+  let totalQtd = 0, totalVal = 0;
+  document.querySelectorAll('input[data-id]').forEach(inp => {
+    const id = inp.dataset.id;
+    const qtd = parseInt(inp.value) || 0;
+    const val = parseFloat(document.getElementById('hval_' + id).value) || 0;
+    totalQtd += qtd;
+    totalVal += val;
+  });
+  const el = document.getElementById('rodape-mes');
+  if (el) el.textContent = 'Mês: ' + totalQtd + ' proc · ' + brl(totalVal);
+}
+
+function trocarComp(comp) {
+  window.location.href = '/eletivas-federais?comp=' + comp;
+}
+
+function salvarLancamentos() {
+  const lancamentos = [];
+  document.querySelectorAll('input[data-id]').forEach(inp => {
+    lancamentos.push({
+      pactuacao_id: inp.dataset.id,
+      qtd: parseInt(inp.value) || 0
+    });
+  });
+
+  fetch('/eletivas-federais/lancar', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({competencia: COMP_SEL, lancamentos: lancamentos})
+  })
+  .then(r => r.json())
+  .then(d => {
+    if (d.ok) {
+      const msg = document.getElementById('msg-salvo');
+      msg.style.display = 'block';
+      setTimeout(() => { msg.style.display = 'none'; location.reload(); }, 1800);
+    }
+  });
+}
+
+// Inicializa rodapé ao carregar
+atualizarRodapeFed();
+</script>
+{% endblock %}

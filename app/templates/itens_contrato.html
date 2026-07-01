@@ -1,0 +1,326 @@
+{% extends "base.html" %}
+{% block title %}Itens do Contrato{% endblock %}
+
+{% block head %}
+<style>
+.ic-topo { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; flex-wrap:wrap; gap:10px; }
+.ic-topo h1 { font-size:19px; font-weight:700; }
+.ic-topo p  { font-size:12px; color:#64748b; margin-top:2px; }
+
+.ic-cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin-bottom:18px; }
+.ic-card { background:#fff; border-radius:8px; padding:13px 15px; border-left:4px solid #2563a8; box-shadow:0 1px 3px rgba(0,0,0,.07); }
+.ic-card .num { font-size:19px; font-weight:700; color:#1e293b; }
+.ic-card .lbl { font-size:10px; color:#64748b; text-transform:uppercase; letter-spacing:.4px; margin-top:2px; }
+.ic-card.verde  { border-left-color:#16a34a; }
+.ic-card.amarelo{ border-left-color:#ca8a04; }
+.ic-card.cinza  { border-left-color:#94a3b8; }
+
+/* Barra competência */
+.comp-bar { background:#fff; border-radius:8px; padding:12px 16px; box-shadow:0 1px 3px rgba(0,0,0,.07); margin-bottom:14px; display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+.comp-bar label { font-size:12px; font-weight:700; color:#64748b; }
+.comp-bar select { padding:6px 10px; border:1px solid #e2e8f0; border-radius:6px; font-size:13px; }
+
+/* Tabela */
+.planilha-wrap { background:#fff; border-radius:10px; box-shadow:0 1px 3px rgba(0,0,0,.07); overflow-x:auto; }
+.planilha-wrap table { width:100%; border-collapse:collapse; min-width:720px; }
+.planilha-wrap th {
+  background:#f8fafc; font-size:10px; text-transform:uppercase; letter-spacing:.4px;
+  color:#64748b; padding:9px 10px; text-align:left; border-bottom:2px solid #e2e8f0;
+  white-space:nowrap;
+}
+.planilha-wrap th.num { text-align:right; }
+.planilha-wrap td { padding:8px 10px; border-bottom:1px solid #f1f5f9; font-size:12px; vertical-align:middle; }
+.planilha-wrap td.num { text-align:right; font-variant-numeric:tabular-nums; }
+.planilha-wrap tr.grupo-row td { background:#f0f4f8; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:#475569; padding:6px 10px; border-top:2px solid #e2e8f0; }
+.planilha-wrap tr:hover:not(.grupo-row) td { background:#fafbfc; }
+
+/* Código duplo */
+.cod-wrap { display:flex; flex-direction:column; gap:1px; }
+.cod-wrap .c1 { font-size:11px; color:#1e293b; font-weight:500; }
+.cod-wrap .c2 { font-size:10px; color:#94a3b8; }
+
+/* Inputs */
+.inp-qtd {
+  width:70px; padding:5px 7px; border:1px solid #e2e8f0; border-radius:4px;
+  font-size:13px; text-align:center; background:#fff;
+}
+.inp-qtd:focus { outline:none; border-color:#2563a8; background:#eff6ff; }
+.val-calc { font-size:12px; color:#1e293b; font-weight:500; text-align:right; min-width:90px; display:inline-block; }
+
+/* Barra execução */
+.ex-bar { display:flex; align-items:center; gap:5px; }
+.ex-bar .bar { height:5px; width:55px; background:#e2e8f0; border-radius:3px; overflow:hidden; flex-shrink:0; }
+.ex-bar .bar span { display:block; height:100%; border-radius:3px; background:#16a34a; }
+.ex-bar .bar.warn span { background:#ca8a04; }
+.ex-bar .bar.low  span { background:#94a3b8; }
+.ex-bar small { font-size:10px; color:#64748b; white-space:nowrap; }
+
+/* Ações */
+.acoes { display:flex; gap:4px; align-items:center; }
+
+/* Totalizador rodapé */
+tfoot td { font-size:12px; font-weight:700; padding:9px 10px; border-top:2px solid #e2e8f0; background:#f8fafc; }
+
+/* Modal */
+.modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:200; align-items:center; justify-content:center; }
+.modal-overlay.aberto { display:flex; }
+.modal { background:#fff; border-radius:12px; padding:24px; width:100%; max-width:540px; box-shadow:0 20px 50px rgba(0,0,0,.2); max-height:90vh; overflow-y:auto; }
+.modal h3 { font-size:15px; font-weight:700; margin-bottom:16px; }
+.campo { margin-bottom:12px; }
+.campo label { display:block; font-size:11px; font-weight:600; color:#64748b; margin-bottom:3px; }
+.campo input, .campo select { width:100%; padding:7px 10px; border:1px solid #e2e8f0; border-radius:6px; font-size:13px; }
+.campo input:focus { outline:none; border-color:#2563a8; }
+.grid2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.grid3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; }
+.modal-footer { display:flex; gap:8px; justify-content:flex-end; margin-top:16px; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="ic-topo">
+  <div>
+    <h1>Itens do Contrato Estado</h1>
+    <p>C A DE SOUSA REZENDE — CNES 0067326 &middot; Valor Global: <strong>R$ 198.945,09</strong></p>
+  </div>
+  <div style="display:flex;gap:8px;">
+    <button class="btn btn-cinza btn-sm" onclick="alternarHistorico()">Histórico</button>
+    {% if current_user.admin %}
+    <button class="btn btn-azul btn-sm" onclick="document.getElementById('modal-add').classList.add('aberto')">+ Procedimento</button>
+    {% endif %}
+  </div>
+</div>
+
+{# Cards #}
+<div class="ic-cards">
+  <div class="ic-card"><div class="num">{{ itens|length }}</div><div class="lbl">Procedimentos</div></div>
+  <div class="ic-card verde"><div class="num">{{ total_meta | brl }}</div><div class="lbl">Meta Anual</div></div>
+  <div class="ic-card amarelo"><div class="num">{{ total_real | brl }}</div><div class="lbl">Realizado Acum.</div></div>
+  <div class="ic-card cinza">
+    {% set pct_g = (total_real / total_meta * 100) if total_meta > 0 else 0 %}
+    <div class="num">{{ "%.1f"|format(pct_g) }}%</div>
+    <div class="lbl">% Execução</div>
+  </div>
+</div>
+
+{# ===== PLANILHA ===== #}
+<div id="vista-planilha">
+  <div class="comp-bar">
+    <label>Competência:</label>
+    <select id="sel-comp" onchange="mudarComp()">
+      {% for c in competencias_disp %}
+      <option value="{{ c }}" {% if c == comp_sel %}selected{% endif %}>{{ c[4:] }}/{{ c[:4] }}</option>
+      {% endfor %}
+    </select>
+    <span style="font-size:11px;color:#94a3b8;">Informe as quantidades e clique em Salvar.</span>
+    <div style="margin-left:auto;">
+      <button type="button" class="btn btn-cinza btn-sm" onclick="document.getElementById('form-lote').reset()">Limpar</button>
+      <button type="button" class="btn btn-azul" onclick="salvarLote()" style="margin-left:6px;">Salvar Lançamentos</button>
+    </div>
+  </div>
+
+  <form id="form-lote" method="post" action="{{ url_for('item_contrato_lancar_lote') }}">
+    <input type="hidden" name="competencia_lote" id="inp-comp-lote" value="{{ comp_sel }}">
+    <div class="planilha-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:130px;">Código</th>
+            <th>Descrição</th>
+            <th class="num" style="width:90px;">Valor Unit.</th>
+            <th class="num" style="width:110px;">Meta Anual</th>
+            <th style="text-align:center;width:90px;">Qtd Real.</th>
+            <th class="num" style="width:110px;">Valor Real.</th>
+            <th style="width:80px;">% Exec.</th>
+            {% if current_user.admin %}<th style="width:60px;"></th>{% endif %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for fg, items_g in grupos.items() %}
+          <tr class="grupo-row">
+            <td colspan="{% if current_user.admin %}8{% else %}7{% endif %}">{{ fg }}</td>
+          </tr>
+          {% for it in items_g %}
+            {% set lanc = lancamentos_mes.get(it.id) %}
+            {% set qtd_lanc = lanc.qtd_realizada if lanc else 0 %}
+            {% set val_lanc = lanc.val_realizado  if lanc else 0 %}
+            {% set pct = it.pct_execucao %}
+            {% set bar_cls = '' if pct >= 80 else ('warn' if pct >= 40 else 'low') %}
+          <tr>
+            <td>
+              <div class="cod-wrap">
+                <span class="c1">{{ it.cod_catalogo }}</span>
+                <span class="c2">{{ it.cod_sigtap }}</span>
+              </div>
+            </td>
+            <td style="font-weight:500;">{{ it.descricao }}</td>
+            <td class="num">{{ it.valor_unit | brl }}</td>
+            <td class="num">
+              {% if it.meta_anual_val and it.meta_anual_val > 0 %}
+                {{ it.meta_anual_val | brl }}
+              {% else %}<span style="color:#cbd5e1;">—</span>{% endif %}
+            </td>
+            <td style="text-align:center;">
+              <input type="number" class="inp-qtd" name="qtd_{{ it.id }}"
+                     id="qtd_{{ it.id }}" min="0"
+                     value="{{ qtd_lanc if qtd_lanc else '' }}"
+                     placeholder="0"
+                     oninput="calcVal({{ it.id }}, {{ it.valor_unit }})">
+              <input type="hidden" name="val_{{ it.id }}" id="val_{{ it.id }}" value="{{ '%.2f'|format(val_lanc|float) if val_lanc else '' }}">
+              <input type="hidden" name="obs_{{ it.id }}" value="">
+            </td>
+            <td class="num">
+              <span class="val-calc" id="span_val_{{ it.id }}">
+                {% if val_lanc and val_lanc|float > 0 %}{{ val_lanc | brl }}{% else %}<span style="color:#cbd5e1;">—</span>{% endif %}
+              </span>
+            </td>
+            <td>
+              <div class="ex-bar">
+                <div class="bar {{ bar_cls }}"><span style="width:{{ [pct,100]|min }}%;"></span></div>
+                <small>{{ "%.1f"|format(pct) }}%</small>
+              </div>
+            </td>
+            {% if current_user.admin %}
+            <td>
+              <div class="acoes">
+                <a href="{{ url_for('item_contrato_edit', iid=it.id) }}" class="btn btn-cinza btn-sm" title="Editar meta/dados">✎</a>
+                <form method="post" action="{{ url_for('item_contrato_delete', iid=it.id) }}" style="display:inline;" onsubmit="return confirm('Excluir?')">
+                  <button class="btn btn-vermelho btn-sm" title="Excluir">×</button>
+                </form>
+              </div>
+            </td>
+            {% endif %}
+          </tr>
+          {% endfor %}
+          {% endfor %}
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="4" style="text-align:right;color:#64748b;font-size:11px;">Total do mês ({{ comp_sel[4:] }}/{{ comp_sel[:4] }}):</td>
+            <td style="text-align:center;" id="foot-qtd">{{ total_mes_qtd if total_mes_qtd else '—' }}</td>
+            <td class="num" id="foot-val">{{ total_mes_val | brl if total_mes_val else '—' }}</td>
+            <td colspan="{% if current_user.admin %}2{% else %}1{% endif %}"></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </form>
+</div>
+
+{# ===== HISTÓRICO ===== #}
+<div id="vista-historico" style="display:none;">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+    <h2 style="font-size:15px;font-weight:700;">Histórico de Lançamentos</h2>
+    <button class="btn btn-cinza btn-sm" onclick="alternarHistorico()">← Voltar</button>
+  </div>
+  <div class="planilha-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th style="width:100px;">Competência</th>
+          <th style="width:110px;">Cód. SIGTAP</th>
+          <th>Descrição</th>
+          <th class="num">Qtd</th>
+          <th class="num">Valor</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% set ns = namespace(found=false) %}
+        {% for it in itens %}{% for l in it.lancamentos | sort(attribute='competencia', reverse=True) %}
+        {% set ns.found = true %}
+        <tr>
+          <td style="font-weight:600;white-space:nowrap;">{{ l.competencia[4:] }}/{{ l.competencia[:4] }}</td>
+          <td style="color:#94a3b8;font-size:11px;">{{ it.cod_sigtap }}</td>
+          <td style="font-size:12px;">{{ it.descricao }}</td>
+          <td class="num">{{ l.qtd_realizada | format_number }}</td>
+          <td class="num">{{ l.val_realizado | brl }}</td>
+        </tr>
+        {% endfor %}{% endfor %}
+        {% if not ns.found %}
+        <tr><td colspan="5" style="text-align:center;padding:40px;color:#94a3b8;">Nenhum lançamento ainda.</td></tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{# Modal novo item #}
+{% if current_user.admin %}
+<div class="modal-overlay" id="modal-add">
+  <div class="modal">
+    <h3>Novo Procedimento</h3>
+    <form method="post" action="{{ url_for('item_contrato_add') }}">
+      <input type="hidden" name="contrato_nome" value="Contrato Estado CE">
+      <div class="campo">
+        <label>Forma de Organização SIGTAP</label>
+        <input type="text" name="forma_org" placeholder="Ex: 04.05.01 - Pálpebras e Vias Lacrimais">
+      </div>
+      <div class="grid2">
+        <div class="campo"><label>Código Catálogo</label><input type="text" name="cod_catalogo"></div>
+        <div class="campo"><label>Código SIGTAP</label><input type="text" name="cod_sigtap"></div>
+      </div>
+      <div class="campo"><label>Descrição *</label><input type="text" name="descricao" required></div>
+      <div class="grid3">
+        <div class="campo"><label>Valor Unit. (R$)</label><input type="number" name="valor_unit" step="0.01" min="0" placeholder="0,00"></div>
+        <div class="campo"><label>Meta Anual (R$)</label><input type="number" name="meta_anual_val" step="0.01" min="0" placeholder="0,00"></div>
+        <div class="campo"><label>Ordem</label><input type="number" name="ordem" min="0" value="0"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-cinza" onclick="document.getElementById('modal-add').classList.remove('aberto')">Cancelar</button>
+        <button type="submit" class="btn btn-azul">Salvar</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+<script>
+function brl(v) {
+  return 'R$ ' + v.toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+
+function calcVal(id, valorUnit) {
+  var qtd = parseInt(document.getElementById('qtd_' + id).value) || 0;
+  var val = qtd * valorUnit;
+  document.getElementById('val_' + id).value = val > 0 ? val.toFixed(2) : '';
+  document.getElementById('span_val_' + id).innerHTML = val > 0 ? brl(val) : '<span style="color:#cbd5e1;">—</span>';
+  atualizarRodape();
+}
+
+function atualizarRodape() {
+  var totalQtd = 0, totalVal = 0;
+  document.querySelectorAll('[id^="qtd_"]').forEach(function(inp) {
+    totalQtd += parseInt(inp.value) || 0;
+  });
+  document.querySelectorAll('input[id^="val_"]').forEach(function(inp) {
+    totalVal += parseFloat(inp.value) || 0;
+  });
+  document.getElementById('foot-qtd').textContent = totalQtd > 0 ? totalQtd : '—';
+  document.getElementById('foot-val').textContent = totalVal > 0 ? brl(totalVal) : '—';
+}
+
+function mudarComp() {
+  var c = document.getElementById('sel-comp').value;
+  window.location.href = '{{ url_for("itens_contrato") }}?comp=' + c;
+}
+
+function salvarLote() {
+  document.getElementById('inp-comp-lote').value = document.getElementById('sel-comp').value;
+  document.getElementById('form-lote').submit();
+}
+
+function alternarHistorico() {
+  var p = document.getElementById('vista-planilha');
+  var h = document.getElementById('vista-historico');
+  if (h.style.display === 'none') { p.style.display='none'; h.style.display=''; }
+  else { p.style.display=''; h.style.display='none'; }
+}
+
+document.getElementById('modal-add') && document.getElementById('modal-add').addEventListener('click', function(e){
+  if(e.target===this) this.classList.remove('aberto');
+});
+
+// Inicializa rodapé
+atualizarRodape();
+</script>
+{% endblock %}

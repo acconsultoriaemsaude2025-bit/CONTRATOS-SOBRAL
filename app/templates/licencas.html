@@ -1,0 +1,283 @@
+{% extends "base.html" %}
+{% block title %}Licenças e Alvarás{% endblock %}
+
+{% block head %}
+<style>
+.lic-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; flex-wrap:wrap; gap:12px; }
+.lic-header h1 { font-size:20px; font-weight:700; }
+.lic-header p  { font-size:12px; color:#64748b; margin-top:2px; }
+
+.lic-cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:14px; margin-bottom:24px; }
+.lic-card { background:#fff; border-radius:10px; padding:16px 18px; border-left:4px solid #e2e8f0; box-shadow:0 1px 3px rgba(0,0,0,.07); }
+.lic-card.vencida   { border-left-color:#dc2626; }
+.lic-card.alerta    { border-left-color:#f59e0b; }
+.lic-card.vigente   { border-left-color:#16a34a; }
+.lic-card.total     { border-left-color:#2563a8; }
+.lic-card .num  { font-size:28px; font-weight:700; line-height:1; }
+.lic-card .lbl  { font-size:11px; color:#64748b; text-transform:uppercase; letter-spacing:.4px; margin-top:4px; }
+.lic-card.vencida .num  { color:#dc2626; }
+.lic-card.alerta  .num  { color:#d97706; }
+.lic-card.vigente .num  { color:#16a34a; }
+
+.lic-lista { display:flex; flex-direction:column; gap:12px; }
+.lic-item {
+  background:#fff; border-radius:10px; padding:16px 20px;
+  box-shadow:0 1px 3px rgba(0,0,0,.07);
+  border-left:5px solid #e2e8f0;
+  display:grid; grid-template-columns:1fr auto;
+  gap:8px 20px; align-items:start;
+}
+.lic-item.vencida   { border-left-color:#dc2626; }
+.lic-item.alerta    { border-left-color:#f59e0b; }
+.lic-item.vigente   { border-left-color:#16a34a; }
+.lic-item.renovando { border-left-color:#2563a8; }
+.lic-item.cancelada { border-left-color:#94a3b8; opacity:.7; }
+
+.lic-item .tipo { font-size:14px; font-weight:600; color:#1e293b; }
+.lic-item .meta { font-size:12px; color:#64748b; margin-top:3px; }
+.lic-item .acoes { display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:flex-end; }
+
+.alerta-badge { display:inline-flex; align-items:center; gap:5px; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:700; }
+.alerta-badge.vencida   { background:#fee2e2; color:#991b1b; }
+.alerta-badge.alerta    { background:#fef3c7; color:#92400e; }
+.alerta-badge.vigente   { background:#dcfce7; color:#166534; }
+.alerta-badge.renovando { background:#dbeafe; color:#1e40af; }
+.alerta-badge.cancelada { background:#f1f5f9; color:#64748b; }
+
+.vig-bar-label { font-size:10px; color:#94a3b8; margin-top:2px; }
+
+.secao-titulo { font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:#64748b; padding:6px 0; border-bottom:1px solid #e2e8f0; margin:20px 0 12px; }
+
+.modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:200; align-items:center; justify-content:center; }
+.modal-overlay.aberto { display:flex; }
+.modal { background:#fff; border-radius:12px; padding:28px; width:100%; max-width:520px; box-shadow:0 20px 50px rgba(0,0,0,.2); max-height:90vh; overflow-y:auto; }
+.modal h3 { font-size:16px; font-weight:700; margin-bottom:20px; color:#1e293b; }
+.campo { margin-bottom:14px; }
+.campo label { display:block; font-size:11px; font-weight:600; color:#64748b; margin-bottom:4px; }
+.campo input, .campo select, .campo textarea { width:100%; padding:8px 12px; border:1px solid #e2e8f0; border-radius:6px; font-size:13px; }
+.campo textarea { resize:vertical; min-height:60px; }
+.campo input:focus, .campo select:focus { outline:none; border-color:#2563a8; box-shadow:0 0 0 3px rgba(37,99,168,.12); }
+.modal-footer { display:flex; gap:10px; justify-content:flex-end; margin-top:20px; }
+.grid2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+{# ===== MACRO — definido ANTES de qualquer uso ===== #}
+{% macro render_item(l) %}
+{% set alerta = l.status_alerta %}
+{% set dias   = l.dias_para_vencer %}
+<div class="lic-item {{ alerta }}">
+  <div>
+    <div class="tipo">{{ l.tipo }}</div>
+    <div class="meta">
+      {% if l.orgao_emissor %}<strong>{{ l.orgao_emissor }}</strong> &middot; {% endif %}
+      {% if l.numero %}Nº {{ l.numero }} &middot; {% endif %}
+      {% if l.categoria %}<span style="text-transform:capitalize;">{{ l.categoria }}</span> &middot; {% endif %}
+      {% if l.data_emissao %}Emissão: {{ l.data_emissao.strftime('%d/%m/%Y') }} &middot; {% endif %}
+      {% if l.data_vencimento %}Vencimento: <strong>{{ l.data_vencimento.strftime('%d/%m/%Y') }}</strong>{% endif %}
+    </div>
+
+    {% if l.data_vencimento and l.data_emissao %}
+      {% set total_dias = (l.data_vencimento - l.data_emissao).days %}
+      {% set dias_passados = [(hoje - l.data_emissao).days, 0]|max %}
+      {% set pct = ([dias_passados / total_dias * 100, 100]|min) if total_dias > 0 else 100 %}
+      <div class="vig-bar-wrap" style="margin-top:8px;">
+        <div style="height:5px; background:#e2e8f0; border-radius:3px; overflow:hidden; position:relative;">
+          <div style="position:absolute; inset:0; background:linear-gradient(to right,#16a34a,#f59e0b,#dc2626); border-radius:3px;"></div>
+          <div style="position:absolute; right:0; top:0; bottom:0; width:{{ [100-pct,0]|max }}%; background:#e2e8f0; border-radius:0 3px 3px 0;"></div>
+        </div>
+        <div class="vig-bar-label">
+          {% if alerta == 'vencida' %}Vencida há {{ (-dias)|int }} dia(s)
+          {% elif dias == 0 %}Vence hoje!
+          {% else %}{{ dias }} dia(s) restantes &mdash; alerta em {{ l.dias_antecedencia }} dias antes
+          {% endif %}
+        </div>
+      </div>
+    {% elif l.data_vencimento %}
+      <div class="vig-bar-label" style="margin-top:5px;">
+        {% if alerta == 'vencida' %}Vencida há {{ (-dias)|int }} dia(s)
+        {% elif dias == 0 %}Vence hoje!
+        {% else %}{{ dias }} dia(s) restantes
+        {% endif %}
+      </div>
+    {% endif %}
+
+    {% if l.observacoes %}
+    <div style="font-size:11px; color:#94a3b8; margin-top:5px; font-style:italic;">{{ l.observacoes }}</div>
+    {% endif %}
+  </div>
+
+  <div class="acoes">
+    <span class="alerta-badge {{ alerta }}">
+      {% if alerta == 'vencida' %}VENCIDA
+      {% elif alerta == 'alerta' %}RENOVAR
+      {% elif alerta == 'vigente' %}VIGENTE
+      {% elif alerta == 'renovando' %}RENOVANDO
+      {% else %}—{% endif %}
+    </span>
+    {% if l.arquivo_nome %}
+    <a href="{{ url_for('licenca_arquivo', lid=l.id) }}" class="btn btn-cinza btn-sm" target="_blank" title="{{ l.arquivo_nome }}">📄</a>
+    {% endif %}
+    <a href="{{ url_for('licenca_edit', lid=l.id) }}" class="btn btn-cinza btn-sm">Editar</a>
+    {% if current_user.admin %}
+    <form method="post" action="{{ url_for('licenca_delete', lid=l.id) }}" onsubmit="return confirm('Excluir esta licença?');" style="display:inline;">
+      <button class="btn btn-vermelho btn-sm">Excluir</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+{% endmacro %}
+
+{# ===== CABEÇALHO ===== #}
+<div class="lic-header">
+  <div>
+    <h1>Licenças e Alvarás</h1>
+    <p>C A DE SOUSA REZENDE — CNES 0067326 &middot; Hoje: {{ hoje.strftime('%d/%m/%Y') }}</p>
+  </div>
+  <button class="btn btn-azul" onclick="document.getElementById('modal-add').classList.add('aberto')">
+    + Nova Licença
+  </button>
+</div>
+
+{# ===== CARDS RESUMO ===== #}
+<div class="lic-cards">
+  <div class="lic-card total">
+    <div class="num">{{ todas|length }}</div>
+    <div class="lbl">Total</div>
+  </div>
+  <div class="lic-card vigente">
+    <div class="num">{{ vigentes|length }}</div>
+    <div class="lbl">Vigentes</div>
+  </div>
+  <div class="lic-card alerta">
+    <div class="num">{{ em_alerta|length }}</div>
+    <div class="lbl">Em Alerta</div>
+  </div>
+  <div class="lic-card vencida">
+    <div class="num">{{ vencidas|length }}</div>
+    <div class="lbl">Vencidas</div>
+  </div>
+</div>
+
+{% if not todas %}
+<div style="text-align:center; padding:60px 20px; color:#94a3b8;">
+  <div style="font-size:40px; margin-bottom:12px;">📋</div>
+  <div style="font-size:16px; font-weight:600; color:#475569;">Nenhuma licença cadastrada</div>
+  <div style="font-size:13px; margin-top:6px;">Clique em "Nova Licença" para começar.</div>
+</div>
+{% else %}
+
+{% if vencidas %}
+<div class="secao-titulo" style="color:#dc2626;">⚠ Vencidas ({{ vencidas|length }})</div>
+<div class="lic-lista">
+  {% for l in vencidas %}{{ render_item(l) }}{% endfor %}
+</div>
+{% endif %}
+
+{% if em_alerta %}
+<div class="secao-titulo" style="color:#d97706;">🔔 Próximas do Vencimento ({{ em_alerta|length }})</div>
+<div class="lic-lista">
+  {% for l in em_alerta %}{{ render_item(l) }}{% endfor %}
+</div>
+{% endif %}
+
+{% if vigentes %}
+<div class="secao-titulo" style="color:#16a34a;">✔ Vigentes ({{ vigentes|length }})</div>
+<div class="lic-lista">
+  {% for l in vigentes %}{{ render_item(l) }}{% endfor %}
+</div>
+{% endif %}
+
+{% if sem_venc %}
+<div class="secao-titulo">Sem data de vencimento ({{ sem_venc|length }})</div>
+<div class="lic-lista">
+  {% for l in sem_venc %}{{ render_item(l) }}{% endfor %}
+</div>
+{% endif %}
+
+{% endif %}
+
+{# ===== MODAL NOVA LICENÇA ===== #}
+<div class="modal-overlay" id="modal-add">
+  <div class="modal">
+    <h3>Nova Licença / Alvará</h3>
+    <form method="post" action="{{ url_for('licenca_add') }}" enctype="multipart/form-data">
+      <div class="campo">
+        <label>Tipo / Nome *</label>
+        <input type="text" name="tipo" required placeholder="Ex: Alvará Sanitário Estadual">
+      </div>
+      <div class="grid2">
+        <div class="campo">
+          <label>Categoria</label>
+          <select name="categoria">
+            <option value="">Selecione...</option>
+            <option value="sanitario">Sanitário</option>
+            <option value="funcionamento">Funcionamento</option>
+            <option value="ambiental">Ambiental</option>
+            <option value="bombeiros">Corpo de Bombeiros</option>
+            <option value="vigilancia">Vigilância Sanitária</option>
+            <option value="outro">Outro</option>
+          </select>
+        </div>
+        <div class="campo">
+          <label>Situação</label>
+          <select name="situacao">
+            <option value="vigente">Vigente</option>
+            <option value="renovando">Em Renovação</option>
+            <option value="vencida">Vencida</option>
+            <option value="cancelada">Cancelada</option>
+          </select>
+        </div>
+      </div>
+      <div class="campo">
+        <label>Órgão Emissor</label>
+        <input type="text" name="orgao_emissor" placeholder="Ex: VISA Estadual / Corpo de Bombeiros">
+      </div>
+      <div class="campo">
+        <label>Número do Documento</label>
+        <input type="text" name="numero" placeholder="Número do alvará / protocolo">
+      </div>
+      <div class="grid2">
+        <div class="campo">
+          <label>Data de Emissão</label>
+          <input type="date" name="data_emissao">
+        </div>
+        <div class="campo">
+          <label>Data de Vencimento</label>
+          <input type="date" name="data_vencimento">
+        </div>
+      </div>
+      <div class="campo">
+        <label>Alertar quantos dias antes do vencimento?</label>
+        <select name="dias_antecedencia">
+          <option value="30">30 dias</option>
+          <option value="60">60 dias</option>
+          <option value="90" selected>90 dias (padrão)</option>
+          <option value="120">120 dias</option>
+          <option value="180">180 dias</option>
+        </select>
+      </div>
+      <div class="campo">
+        <label>Observações</label>
+        <textarea name="observacoes" placeholder="Informações adicionais, pendências, etc."></textarea>
+      </div>
+      <div class="campo">
+        <label>Anexar Documento (PDF, imagem)</label>
+        <input type="file" name="arquivo" accept=".pdf,.jpg,.jpeg,.png">
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-cinza" onclick="document.getElementById('modal-add').classList.remove('aberto')">Cancelar</button>
+        <button type="submit" class="btn btn-azul">Salvar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+document.getElementById('modal-add').addEventListener('click', function(e){
+  if(e.target === this) this.classList.remove('aberto');
+});
+</script>
+{% endblock %}

@@ -1,0 +1,212 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — Contratos C A DE SOUSA REZENDE{% endblock %}
+
+{% block head %}
+<script src="/static/js/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:24px; flex-wrap:wrap; gap:12px;">
+  <div>
+    <h1 style="font-size:22px; font-weight:700;">C A DE SOUSA REZENDE</h1>
+    <p style="font-size:12px; color:#64748b; margin-top:2px;">CNPJ 15.061.733/0001-03 — Monitoramento de Contratos</p>
+  </div>
+  <div style="font-size:12px; color:#94a3b8;">Portal da Transparência · Atualizado diariamente</div>
+</div>
+
+<!-- TOTALIZADOR GERAL -->
+<div class="cards" style="margin-bottom:32px;">
+  <div class="card">
+    <div class="rotulo">Contratos ativos</div>
+    <div class="valor">{{ contratos|length }}</div>
+    <div class="sub">monitorados</div>
+  </div>
+  <div class="card">
+    <div class="rotulo">Total Empenhado</div>
+    <div class="valor" style="font-size:18px;">{{ total_emp | brl }}</div>
+    <div class="sub">todos os contratos</div>
+  </div>
+  <div class="card amarelo">
+    <div class="rotulo">Total Liquidado</div>
+    <div class="valor" style="font-size:18px;">{{ total_liq | brl }}</div>
+    <div class="sub">{% if total_emp %}{{ "%.1f"|format(total_liq / total_emp * 100) }}% do empenhado{% endif %}</div>
+  </div>
+  <div class="card verde">
+    <div class="rotulo">Total Pago</div>
+    <div class="valor" style="font-size:18px;">{{ total_pago | brl }}</div>
+    <div class="sub">{% if total_emp %}{{ "%.1f"|format(total_pago / total_emp * 100) }}% do empenhado{% endif %}</div>
+  </div>
+</div>
+
+<!-- DASHBOARDS INDIVIDUAIS POR CONTRATO -->
+{% if contratos %}
+  {% for c in contratos %}
+  {% set emp   = c.total_empenhado %}
+  {% set liq   = c.total_liquidado %}
+  {% set pago  = c.total_pago %}
+  {% set ini   = c.valor_inicial | float %}
+  {% set pct   = (pago / emp * 100) if emp else 0 %}
+  {% set pcl   = (liq / emp * 100)  if emp else 0 %}
+  {% set cor   = '#16a34a' if pct >= 75 else ('#ca8a04' if pct >= 30 else '#2563a8') %}
+
+  <div style="background:#fff; border-radius:14px; box-shadow:0 2px 8px rgba(0,0,0,.08); margin-bottom:28px; overflow:hidden;">
+
+    <!-- CABEÇALHO DO CARD -->
+    <div style="background:var(--azul); color:#fff; padding:18px 24px; display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+      <div>
+        <div style="font-size:11px; opacity:.7; text-transform:uppercase; letter-spacing:.5px;">Contrato</div>
+        <div style="font-size:20px; font-weight:700;">{{ c.numero }}</div>
+        <div style="font-size:12px; opacity:.85; margin-top:2px;">{{ c.secretaria or 'Secretaria não informada' }}</div>
+      </div>
+      <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+        <span class="badge badge-{{ c.status }}" style="font-size:12px;">{{ c.status }}</span>
+        <a href="{{ url_for('detalhe_contrato', numero=c.numero) }}" class="btn btn-sm" style="background:rgba(255,255,255,.2); color:#fff; border:1px solid rgba(255,255,255,.3);">Ver detalhes →</a>
+        {% if c.url %}<a href="{{ c.url }}" target="_blank" class="btn btn-sm" style="background:rgba(255,255,255,.2); color:#fff; border:1px solid rgba(255,255,255,.3);">Portal ↗</a>{% endif %}
+      </div>
+    </div>
+
+    <!-- CORPO DO CARD -->
+    <div style="padding:20px 24px;">
+
+      {% if c.objeto %}
+      <div style="font-size:12px; color:#475569; background:#f8fafc; border-left:3px solid var(--azul); padding:10px 14px; border-radius:0 6px 6px 0; margin-bottom:20px;">
+        <strong>Objeto:</strong> {{ c.objeto }}
+      </div>
+      {% endif %}
+
+      <!-- MÉTRICAS 4 COLUNAS -->
+      <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:14px; margin-bottom:20px;">
+
+        <div style="background:#f8fafc; border-radius:10px; padding:14px; border:1px solid #e2e8f0;">
+          <div class="rotulo">Valor Contratado</div>
+          <div style="font-size:17px; font-weight:700; color:#1e293b;">{{ ini | brl if ini > 0 else '—' }}</div>
+          <div class="sub">valor inicial do contrato</div>
+        </div>
+
+        <div style="background:#eff6ff; border-radius:10px; padding:14px; border:1px solid #bfdbfe;">
+          <div class="rotulo" style="color:#1d4ed8;">Empenhado</div>
+          <div style="font-size:17px; font-weight:700; color:#1d4ed8;">{{ emp | brl }}</div>
+          <div class="sub">{{ c.empenhos|length }} empenho(s)</div>
+        </div>
+
+        <div style="background:#fffbeb; border-radius:10px; padding:14px; border:1px solid #fde68a;">
+          <div class="rotulo" style="color:#92400e;">Liquidado</div>
+          <div style="font-size:17px; font-weight:700; color:#92400e;">{{ liq | brl }}</div>
+          <div class="sub">{{ "%.1f"|format(pcl) }}% do empenhado</div>
+        </div>
+
+        <div style="background:#f0fdf4; border-radius:10px; padding:14px; border:1px solid #bbf7d0;">
+          <div class="rotulo" style="color:#15803d;">Pago</div>
+          <div style="font-size:17px; font-weight:700; color:#15803d;">{{ pago | brl }}</div>
+          <div class="sub">{{ "%.1f"|format(pct) }}% do empenhado</div>
+        </div>
+
+      </div>
+
+      <!-- BARRA DE PROGRESSO DUPLA -->
+      <div style="margin-bottom:16px;">
+        <div style="display:flex; justify-content:space-between; font-size:11px; color:#64748b; margin-bottom:4px;">
+          <span>Progresso de liquidação</span>
+          <span>{{ "%.1f"|format(pcl) }}%</span>
+        </div>
+        <div style="height:8px; background:#e2e8f0; border-radius:4px; overflow:hidden; margin-bottom:8px; position:relative;">
+          <div style="position:absolute; inset:0; background:linear-gradient(to right,#16a34a,#facc15,#dc2626); border-radius:4px;"></div>
+          <div style="position:absolute; right:0; top:0; bottom:0; width:{{ [100 - [pcl,100]|min, 0]|max }}%; background:#e2e8f0; border-radius:0 4px 4px 0; transition:width .4s;"></div>
+        </div>
+        <div style="display:flex; justify-content:space-between; font-size:11px; color:#64748b; margin-bottom:4px;">
+          <span>Progresso de pagamento</span>
+          <span>{{ "%.1f"|format(pct) }}%</span>
+        </div>
+        <div style="height:8px; background:#e2e8f0; border-radius:4px; overflow:hidden; position:relative;">
+          <div style="position:absolute; inset:0; background:linear-gradient(to right,#16a34a,#facc15,#dc2626); border-radius:4px;"></div>
+          <div style="position:absolute; right:0; top:0; bottom:0; width:{{ [100 - [pct,100]|min, 0]|max }}%; background:#e2e8f0; border-radius:0 4px 4px 0; transition:width .4s;"></div>
+        </div>
+      </div>
+
+      <!-- BARRA DE VIGÊNCIA -->
+      {% if c.data_inicial and c.data_final %}
+      {% set hoje = now_date %}
+      {% set total_dias = (c.data_final - c.data_inicial).days %}
+      {% set dias_passados = [(hoje - c.data_inicial).days, 0] | max %}
+      {% set pct_vig = ([dias_passados / total_dias * 100, 100] | min) if total_dias > 0 else 0 %}
+      {% set dias_restantes = (c.data_final - hoje).days %}
+      {% set cor_vig = '#dc2626' if dias_restantes < 30 else ('#ca8a04' if dias_restantes < 90 else '#16a34a') %}
+      <div style="margin-bottom:16px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; font-size:11px; color:#64748b; margin-bottom:4px;">
+          <span style="display:flex; align-items:center; gap:6px;">
+            <span style="width:8px; height:8px; border-radius:50%; background:{{ cor_vig }}; display:inline-block;"></span>
+            Vigência do contrato
+            <span style="font-weight:600; color:{{ cor_vig }};">
+              {% if dias_restantes < 0 %}ENCERRADO{% elif dias_restantes == 0 %}Vence hoje{% else %}{{ dias_restantes }} dias restantes{% endif %}
+            </span>
+          </span>
+          <span>{{ c.data_inicial.strftime('%d/%m/%Y') }} → {{ c.data_final.strftime('%d/%m/%Y') }}</span>
+        </div>
+        <div style="height:10px; background:#e2e8f0; border-radius:5px; overflow:hidden; position:relative;">
+          <div style="position:absolute; inset:0; background:linear-gradient(to right,#16a34a,#facc15,#dc2626); border-radius:5px;"></div>
+          <div style="position:absolute; right:0; top:0; bottom:0; width:{{ [100 - pct_vig, 0]|max }}%; background:#e2e8f0; border-radius:0 5px 5px 0; transition:width .4s;"></div>
+        </div>
+        <div style="display:flex; justify-content:space-between; font-size:10px; color:#94a3b8; margin-top:2px;">
+          <span>Início</span>
+          <span>{{ "%.0f"|format(pct_vig) }}% do período decorrido</span>
+          <span>Fim</span>
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- MINI GRÁFICO + INFO VIGÊNCIA -->
+      <div style="display:grid; grid-template-columns:1fr auto; gap:20px; align-items:center;">
+        <canvas id="chart-{{ loop.index }}" style="max-height:80px;"></canvas>
+        <div style="text-align:right; min-width:140px;">
+          {% if c.data_inicial or c.data_final %}
+          <div class="sub-texto">Vigência</div>
+          <div style="font-size:12px; font-weight:600; color:#374151;">
+            {{ c.data_inicial.strftime('%d/%m/%Y') if c.data_inicial else '?' }}
+            {% if c.data_final %} → {{ c.data_final.strftime('%d/%m/%Y') }}{% endif %}
+          </div>
+          {% endif %}
+          <div class="sub-texto" style="margin-top:8px;">Saldo a pagar</div>
+          <div style="font-size:14px; font-weight:700; color:{% if emp - pago > 0.01 %}#ca8a04{% else %}#16a34a{% endif %};">
+            {{ (emp - pago) | brl }}
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+  (function(){
+    var ctx = document.getElementById('chart-{{ loop.index }}').getContext('2d');
+    new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: ['Empenhado','Liquidado','Pago'],
+        datasets: [{
+          data: [{{ emp }}, {{ liq }}, {{ pago }}],
+          backgroundColor: ['#2563a8cc','#ca8a04cc','#16a34acc'],
+          borderRadius: 4,
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { display: false },
+          x: { ticks: { font: { size: 10 } }, grid: { display: false } }
+        }
+      }
+    });
+  })();
+  </script>
+
+  {% endfor %}
+
+{% else %}
+<div style="text-align:center; padding:60px; color:#94a3b8; background:#fff; border-radius:14px;">
+  <div style="font-size:40px; margin-bottom:12px;">📋</div>
+  <div style="font-size:16px; font-weight:600;">Nenhum contrato sincronizado</div>
+  <div class="sub-texto">Adicione contratos em <strong>Admin → Contratos</strong> e rode <code>flask sync</code>.</div>
+</div>
+{% endif %}
+{% endblock %}

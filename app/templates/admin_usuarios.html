@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Usuários — Admin{% endblock %}
+{% block content %}
+
+<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px;">
+  <h1 style="font-size:20px; font-weight:700;">Gestão de Usuários</h1>
+  <button class="btn btn-azul" onclick="document.getElementById('modal-add').classList.add('aberto')">+ Novo usuário</button>
+</div>
+
+<div class="tabela-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>Nome</th><th>E-mail</th><th>Perfil</th><th>Cadastrado em</th><th>Ativo</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for u in usuarios %}
+    <tr>
+      <td>{{ u.nome }}</td>
+      <td>{{ u.email }}</td>
+      <td>
+        <span class="badge {{ 'badge-ativo' if u.admin else 'badge-pendente' }}">
+          {{ 'Admin' if u.admin else 'Visualizador' }}
+        </span>
+      </td>
+      <td style="font-size:12px;">{{ u.criado_em.strftime('%d/%m/%Y') if u.criado_em else '—' }}</td>
+      <td>
+        {% if u.id != current_user.id %}
+        <form method="POST" action="{{ url_for('admin_toggle_usuario', uid=u.id) }}" style="display:inline;">
+          <button class="btn btn-sm {{ 'btn-cinza' if u.ativo else 'btn-vermelho' }}" type="submit">
+            {{ 'Ativo' if u.ativo else 'Inativo' }}
+          </button>
+        </form>
+        {% else %}
+        <span class="sub-texto">(você)</span>
+        {% endif %}
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="5" style="text-align:center; padding:32px; color:#94a3b8;">Nenhum usuário.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- MODAL NOVO USUÁRIO -->
+<div class="modal-overlay" id="modal-add" onclick="if(event.target===this)this.classList.remove('aberto')">
+  <div class="modal">
+    <h3>Novo Usuário</h3>
+    <form method="POST" action="{{ url_for('admin_add_usuario') }}">
+      <div class="campo">
+        <label>Nome completo</label>
+        <input type="text" name="nome" required placeholder="Maria Silva">
+      </div>
+      <div class="campo">
+        <label>E-mail</label>
+        <input type="email" name="email" required placeholder="maria@sobral.ce.gov.br">
+      </div>
+      <div class="campo">
+        <label>Senha inicial</label>
+        <input type="password" name="senha" required placeholder="mínimo 6 caracteres" minlength="6">
+      </div>
+      <div class="campo">
+        <label>Perfil</label>
+        <select name="admin">
+          <option value="0">Visualizador (apenas leitura)</option>
+          <option value="1">Administrador (pode gerenciar)</option>
+        </select>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-cinza" onclick="document.getElementById('modal-add').classList.remove('aberto')">Cancelar</button>
+        <button type="submit" class="btn btn-azul">Criar</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

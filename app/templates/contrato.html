@@ -1,0 +1,232 @@
+{% extends "base.html" %}
+{% block title %}{{ c.numero }} — Contratos SMS Sobral{% endblock %}
+
+{% block head %}
+<script src="/static/js/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<!-- CABEÇALHO -->
+<div style="display:flex; align-items:center; gap:12px; margin-bottom:20px;">
+  <a href="{{ url_for('dashboard') }}" style="color:#64748b; text-decoration:none; font-size:13px;">← Voltar</a>
+  <span style="color:#cbd5e1;">/</span>
+  <span style="font-size:13px; color:#64748b;">Contrato {{ c.numero }}</span>
+</div>
+
+<div style="display:flex; align-items:flex-start; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-bottom:24px;">
+  <div>
+    <h1 style="font-size:22px; font-weight:700;">{{ c.numero }}</h1>
+    <div style="font-size:14px; color:#475569; margin-top:4px;">{{ c.fornecedor or '—' }}</div>
+    {% if c.cnpj %}<div class="sub-texto">CNPJ {{ c.cnpj }}</div>{% endif %}
+  </div>
+  <div style="display:flex; gap:8px; align-items:center;">
+    <span class="badge badge-{{ c.status }}">{{ c.status }}</span>
+    {% if c.url %}
+    <a href="{{ c.url }}" target="_blank" class="btn btn-cinza btn-sm">Ver no portal ↗</a>
+    {% endif %}
+  </div>
+</div>
+
+<!-- INFO CONTRATO -->
+<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px,1fr)); gap:12px; margin-bottom:24px;">
+  <div class="card" style="border-left:4px solid #2563a8;">
+    <div class="rotulo">Secretaria</div>
+    <div style="font-size:13px; font-weight:600;">{{ c.secretaria or '—' }}</div>
+    <div class="sub">{{ c.unidade or '' }}</div>
+  </div>
+  <div class="card" style="border-left:4px solid #2563a8;">
+    <div class="rotulo">Vigência</div>
+    <div style="font-size:13px; font-weight:600;">
+      {{ c.data_inicial.strftime('%d/%m/%Y') if c.data_inicial else '—' }}
+      {% if c.data_final %} → {{ c.data_final.strftime('%d/%m/%Y') }}{% endif %}
+    </div>
+    <div class="sub">Assinado em {{ c.data_assinatura.strftime('%d/%m/%Y') if c.data_assinatura else '—' }}</div>
+  </div>
+  <div class="card" style="border-left:4px solid #2563a8;">
+    <div class="rotulo">Valor Inicial</div>
+    <div style="font-size:18px; font-weight:700;">{{ c.valor_inicial | brl }}</div>
+  </div>
+</div>
+
+{% if c.objeto %}
+<div style="background:#f8fafc; border-radius:8px; padding:14px 16px; margin-bottom:24px; font-size:13px; color:#374151; border-left:3px solid #2563a8;">
+  <strong>Objeto:</strong> {{ c.objeto }}
+</div>
+{% endif %}
+
+<!-- BARRA DE TEMPO DE VIGÊNCIA -->
+{% if c.data_inicial %}
+{% set hoje = hoje_date %}
+{% set dias_corridos = (hoje - c.data_inicial).days %}
+{% if c.data_final %}
+  {% set duracao_total = (c.data_final - c.data_inicial).days %}
+  {% set pct_tempo = [((dias_corridos / duracao_total * 100) | round(1)), 100] | min %}
+  {% set dias_restantes = (c.data_final - hoje).days %}
+{% else %}
+  {% set duracao_total = 0 %}
+  {% set pct_tempo = 0 %}
+  {% set dias_restantes = -1 %}
+{% endif %}
+<div class="card" style="margin-bottom:24px; padding:16px 20px;">
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+    <div>
+      <span style="font-size:13px; font-weight:600; color:#1e293b;">Vigência do Contrato</span>
+      <span style="font-size:12px; color:#64748b; margin-left:10px;">
+        {{ c.data_inicial.strftime('%d/%m/%Y') }}
+        {% if c.data_final %} → {{ c.data_final.strftime('%d/%m/%Y') }}{% endif %}
+      </span>
+    </div>
+    <div style="text-align:right;">
+      {% if c.data_final and dias_restantes >= 0 %}
+        <span style="font-size:13px; font-weight:700; color:{% if dias_restantes < 60 %}#dc2626{% elif dias_restantes < 120 %}#d97706{% else %}#16a34a{% endif %};">
+          {{ dias_restantes }} dias restantes
+        </span>
+      {% elif c.data_final and dias_restantes < 0 %}
+        <span style="font-size:13px; font-weight:700; color:#dc2626;">Vencido há {{ -dias_restantes }} dias</span>
+      {% else %}
+        <span style="font-size:13px; color:#64748b;">{{ dias_corridos }} dias corridos</span>
+      {% endif %}
+    </div>
+  </div>
+  <!-- trilho da barra -->
+  <div style="position:relative; height:10px; background:#e2e8f0; border-radius:5px; overflow:hidden;">
+    {% if duracao_total > 0 %}
+    <div style="height:100%; width:{{ pct_tempo }}%; background:{% if pct_tempo >= 90 %}#dc2626{% elif pct_tempo >= 70 %}#d97706{% else %}#2563a8{% endif %}; border-radius:5px; transition:width .4s;"></div>
+    {% endif %}
+    <!-- marcador de hoje -->
+    {% if duracao_total > 0 %}
+    <div style="position:absolute; top:-2px; left:calc({{ pct_tempo }}% - 1px); width:2px; height:14px; background:#1e293b; border-radius:1px;"></div>
+    {% endif %}
+  </div>
+  {% if duracao_total > 0 %}
+  <div style="display:flex; justify-content:space-between; font-size:11px; color:#94a3b8; margin-top:4px;">
+    <span>Início</span>
+    <span>{{ pct_tempo }}% do período</span>
+    <span>Fim</span>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+
+<!-- CARDS FINANCEIROS -->
+<div class="cards" style="margin-bottom:24px;">
+  <div class="card">
+    <div class="rotulo">Total Empenhado</div>
+    <div class="valor" style="font-size:18px;">{{ c.total_empenhado | brl }}</div>
+    <div class="sub">{{ empenhos|length }} empenho(s)</div>
+  </div>
+  <div class="card amarelo">
+    <div class="rotulo">Total Liquidado</div>
+    <div class="valor" style="font-size:18px;">{{ c.total_liquidado | brl }}</div>
+    {% if c.total_empenhado %}
+    <div class="sub">{{ "%.1f"|format(c.total_liquidado / c.total_empenhado * 100) }}% do empenhado</div>
+    {% endif %}
+  </div>
+  <div class="card verde">
+    <div class="rotulo">Total Pago</div>
+    <div class="valor" style="font-size:18px;">{{ c.total_pago | brl }}</div>
+    {% if c.total_empenhado %}
+    <div class="sub">{{ "%.1f"|format(c.total_pago / c.total_empenhado * 100) }}% do empenhado</div>
+    {% endif %}
+  </div>
+  <div class="card vermelho">
+    <div class="rotulo">Saldo a Pagar</div>
+    <div class="valor" style="font-size:18px;">{{ (c.total_empenhado - c.total_pago) | brl }}</div>
+    <div class="sub">em aberto</div>
+  </div>
+</div>
+
+<!-- GRÁFICO EMPENHOS -->
+<div class="grafico-card" style="margin-bottom:24px;">
+  <h3>Ciclo financeiro por empenho</h3>
+  <canvas id="chart-emp" style="max-height:200px;"></canvas>
+</div>
+
+<!-- TABELA EMPENHOS -->
+<div class="tabela-wrap">
+  <div class="tabela-header">
+    <h2>Empenhos</h2>
+    <span style="font-size:12px; color:#64748b; margin-left:auto;">{{ empenhos|length }} registro(s)</span>
+  </div>
+  {% if empenhos %}
+  <table>
+    <thead>
+      <tr>
+        <th>Nº Empenho</th>
+        <th>Data</th>
+        <th class="num">Empenhado</th>
+        <th class="num">Liquidado</th>
+        <th class="num">Pago</th>
+        <th class="num">Saldo</th>
+        <th>Liquidações</th>
+        <th>Pagamentos</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for e in empenhos %}
+      <tr>
+        <td>
+          {% if e.url %}
+          <a href="{{ e.url }}" target="_blank" style="color:#2563a8; text-decoration:none; font-weight:600; font-size:12px;">{{ e.numero }} ↗</a>
+          {% else %}
+          <span style="font-size:12px; font-weight:600;">{{ e.numero }}</span>
+          {% endif %}
+        </td>
+        <td style="font-size:12px;">{{ e.data.strftime('%d/%m/%Y') if e.data else '—' }}</td>
+        <td class="num">{{ e.valor_empenhado | brl }}</td>
+        <td class="num">{{ e.total_liquidado | brl }}</td>
+        <td class="num">{{ e.total_pago | brl }}</td>
+        <td class="num" style="color:{% if e.saldo_a_pagar > 0.01 %}#ca8a04{% else %}#16a34a{% endif %};">
+          {{ e.saldo_a_pagar | brl }}
+        </td>
+        <td style="font-size:12px;">
+          {% for l in e.liquidacoes %}
+          <div>Cód {{ l.cod_liquidacao }} — {{ l.valor | brl }}
+            {% if l.data %}<span class="sub-texto">({{ l.data.strftime('%d/%m/%Y') }})</span>{% endif %}
+          </div>
+          {% else %}<span class="sub-texto">—</span>{% endfor %}
+        </td>
+        <td style="font-size:12px;">
+          {% for p in e.pagamentos %}
+          <div>Doc {{ p.doc or '—' }} — {{ p.valor | brl }}
+            {% if p.data %}<span class="sub-texto">({{ p.data.strftime('%d/%m/%Y') }})</span>{% endif %}
+          </div>
+          {% else %}<span class="sub-texto">—</span>{% endfor %}
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div style="padding:40px; text-align:center; color:#94a3b8;">Nenhum empenho carregado. Rode <code>flask sync</code>.</div>
+  {% endif %}
+</div>
+
+<script>
+const empNums = {{ empenhos | map(attribute='numero') | list | tojson }};
+const empEmp  = {{ empenhos | map(attribute='valor_empenhado') | map('float') | list | tojson }};
+const empLiq  = {{ empenhos | map(attribute='total_liquidado') | list | tojson }};
+const empPago = {{ empenhos | map(attribute='total_pago') | list | tojson }};
+
+const ctx = document.getElementById('chart-emp').getContext('2d');
+new Chart(ctx, {
+  type: 'bar',
+  data: {
+    labels: empNums,
+    datasets: [
+      { label: 'Empenhado', data: empEmp,  backgroundColor: '#2563a8bb' },
+      { label: 'Liquidado', data: empLiq,  backgroundColor: '#ca8a04bb' },
+      { label: 'Pago',      data: empPago, backgroundColor: '#16a34abb' },
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: true,
+    plugins: { legend: { position: 'top', labels: { font: { size: 11 } } } },
+    scales: {
+      y: { ticks: { callback: v => 'R$' + (v/1000).toFixed(0) + 'k', font: { size: 10 } } },
+      x: { ticks: { font: { size: 9 }, maxRotation: 45 } }
+    }
+  }
+});
+</script>
+{% endblock %}
