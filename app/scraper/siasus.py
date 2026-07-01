@@ -12,8 +12,6 @@ import datetime as dt
 import logging
 import re
 
-import pyreaddbc
-
 log = logging.getLogger(__name__)
 
 FTP_HOST    = "ftp.datasus.gov.br"
@@ -186,6 +184,7 @@ def processar_arquivo(nome, app_ctx):
 
         if not os.path.exists(dbf_path):
             log.info("[SIA] Convertendo DBC -> DBF ...")
+            import pyreaddbc
             pyreaddbc.dbc2dbf(dbc_path, dbf_path)
 
         log.info("[SIA] Lendo DBF em stream, filtrando CNPJ %s ...", CNPJ_FILTRO)
