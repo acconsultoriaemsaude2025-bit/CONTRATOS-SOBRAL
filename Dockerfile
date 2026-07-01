@@ -6,6 +6,7 @@ WORKDIR /app
 
 COPY requirements.txt .
 RUN pip install --upgrade pip setuptools wheel Cython
+RUN pip install numpy==1.26.4
 RUN pip install -r requirements.txt
 
 COPY . .
