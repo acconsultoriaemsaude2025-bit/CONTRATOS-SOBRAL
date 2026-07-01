@@ -6,12 +6,14 @@ load_dotenv()
 
 class Config:
     SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-change-me")
-    _db_url = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/contratos_sobral")
-    # Railway fornece "postgresql://..." mas SQLAlchemy 2.x exige "postgresql+psycopg2://"
+    _db_url = os.getenv("DATABASE_URL", "postgresql+pg8000://postgres:postgres@localhost:5432/contratos_sobral")
+    # Normaliza prefixo para pg8000 (driver puro Python, sem dependência de libpq)
     if _db_url.startswith("postgres://"):
-        _db_url = _db_url.replace("postgres://", "postgresql+psycopg2://", 1)
+        _db_url = _db_url.replace("postgres://", "postgresql+pg8000://", 1)
     elif _db_url.startswith("postgresql://"):
-        _db_url = _db_url.replace("postgresql://", "postgresql+psycopg2://", 1)
+        _db_url = _db_url.replace("postgresql://", "postgresql+pg8000://", 1)
+    elif _db_url.startswith("postgresql+psycopg2://"):
+        _db_url = _db_url.replace("postgresql+psycopg2://", "postgresql+pg8000://", 1)
     SQLALCHEMY_DATABASE_URI = _db_url
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     PORTAL_BASE = os.getenv("PORTAL_BASE", "https://transparencia.sobral.ce.gov.br")
