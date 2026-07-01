@@ -352,7 +352,12 @@ const top10_labels  = {{ top10_labels | tojson }};
 const top10_val     = {{ top10_val | tojson }};
 
 {% if rows %}
-// Gráfico mensal
+// Gráfico mensal — intensidade proporcional ao valor
+const mensal_max = Math.max(...mensal_val, 1);
+const mensal_cores = mensal_val.map(v => {
+  const alpha = v > 0 ? (0.25 + 0.75 * (v / mensal_max)).toFixed(2) : 0.08;
+  return `rgba(37,99,168,${alpha})`;
+});
 new Chart(document.getElementById('chartMensal'), {
   type: 'bar',
   data: {
@@ -360,7 +365,9 @@ new Chart(document.getElementById('chartMensal'), {
     datasets: [{
       label: 'Valor Aprovado',
       data: mensal_val,
-      backgroundColor: '#2563a8bb',
+      backgroundColor: mensal_cores,
+      borderColor: mensal_val.map(v => v > 0 ? 'rgba(37,99,168,0.9)' : 'rgba(37,99,168,0.2)'),
+      borderWidth: 1,
       borderRadius: 4,
     }]
   },
