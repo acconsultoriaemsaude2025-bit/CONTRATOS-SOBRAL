@@ -239,7 +239,7 @@ def create_app():
             nomes_mun = {r.municipio_cod: r.municipio_nom
                          for r in SIAOrigem.query.with_entities(
                              SIAOrigem.municipio_cod, SIAOrigem.municipio_nom
-                         ).group_by(SIAOrigem.municipio_cod).all()}
+                         ).group_by(SIAOrigem.municipio_cod, SIAOrigem.municipio_nom).all()}
             from collections import namedtuple
             OrigRow = namedtuple("OrigRow", ["municipio_cod", "municipio_nom", "qtd", "val"])
             origem_rows = [OrigRow(r.municipio_cod,
