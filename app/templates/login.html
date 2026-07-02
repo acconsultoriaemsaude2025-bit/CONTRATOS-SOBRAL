@@ -8,12 +8,20 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body {
   font-family: 'Segoe UI', Arial, sans-serif;
-  background: linear-gradient(135deg, #1a4a6b 0%, #2563a8 100%);
+  background: url('/static/capa_login.jpg') center top / cover no-repeat fixed;
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
 }
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 40, 70, 0.55);
+  z-index: 0;
+}
+.card { position: relative; z-index: 1; }
 .card {
   background: #fff;
   border-radius: 16px;
