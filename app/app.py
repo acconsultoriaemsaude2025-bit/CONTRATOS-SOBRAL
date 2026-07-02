@@ -213,11 +213,13 @@ def create_app():
 
         # Dados para gráfico por financiamento
         fin_q = (db.session.query(ProducaoSIA.tpfin,
-                     func.sum(ProducaoSIA.qtd_aprovada))
+                     func.sum(ProducaoSIA.qtd_aprovada),
+                     func.sum(ProducaoSIA.val_aprovado))
                  .group_by(ProducaoSIA.tpfin)
                  .order_by(func.sum(ProducaoSIA.qtd_aprovada).desc()).all())
-        fin_labels = [f"{TPFIN_LABELS.get(t,t)} ({t})" for t,_ in fin_q]
-        fin_qtd    = [int(v or 0) for _,v in fin_q]
+        fin_labels = [f"{TPFIN_LABELS.get(t,t)} ({t})" for t,_,__ in fin_q]
+        fin_qtd    = [int(v or 0) for _,v,__ in fin_q]
+        fin_val    = [float(v or 0) for _,__,v in fin_q]
 
         # Top 10 por valor aprovado
         top10 = sorted(rows, key=lambda r: r.val_apr, reverse=True)[:10]
@@ -289,7 +291,7 @@ def create_app():
             total_val_prod=total_val_prod, total_val_apr=total_val_apr,
             total_procs=total_procs, taxa_apr=taxa_apr,
             mensal_labels=mensal_labels, mensal_val=mensal_val,
-            fin_labels=fin_labels, fin_qtd=fin_qtd,
+            fin_labels=fin_labels, fin_qtd=fin_qtd, fin_val=fin_val,
             top10_labels=top10_labels, top10_val=top10_val,
             tpfin_opts=TPFIN_LABELS,
             ultima_comp=ultima_comp,

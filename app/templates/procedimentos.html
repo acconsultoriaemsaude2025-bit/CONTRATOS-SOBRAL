@@ -192,6 +192,10 @@
     <h3>Distribuição por financiamento (qtd aprovada)</h3>
     <canvas id="chartFin" style="max-height:200px;"></canvas>
   </div>
+  <div class="chart-card">
+    <h3>Distribuição por financiamento (valor aprovado)</h3>
+    <canvas id="chartFinVal" style="max-height:200px;"></canvas>
+  </div>
   <div class="chart-card" style="grid-column:1/-1;">
     <h3>Top 10 procedimentos por valor aprovado</h3>
     <canvas id="chartProc" style="max-height:220px;"></canvas>
@@ -402,6 +406,32 @@ new Chart(document.getElementById('chartFin'), {
       tooltip: {
         callbacks: {
           label: ctx => ` ${ctx.label}: ${ctx.parsed.toLocaleString('pt-BR')} proc (${(ctx.parsed/fin_qtd.reduce((a,b)=>a+b,0)*100).toFixed(1)}%)`
+        }
+      }
+    },
+  }
+});
+
+// Gráfico por financiamento — valor aprovado
+const fin_val = {{ fin_val | tojson }};
+const fin_val_total = fin_val.reduce((a,b)=>a+b,0);
+new Chart(document.getElementById('chartFinVal'), {
+  type: 'doughnut',
+  data: {
+    labels: fin_labels,
+    datasets: [{
+      data: fin_val,
+      backgroundColor: coresFin,
+      borderWidth: 2,
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: true,
+    plugins: {
+      legend: { position: 'right', labels: { font: { size: 11 }, boxWidth: 14 } },
+      tooltip: {
+        callbacks: {
+          label: ctx => ` ${ctx.label}: R$ ${ctx.parsed.toLocaleString('pt-BR', {minimumFractionDigits:2})} (${(ctx.parsed/fin_val_total*100).toFixed(1)}%)`
         }
       }
     },
