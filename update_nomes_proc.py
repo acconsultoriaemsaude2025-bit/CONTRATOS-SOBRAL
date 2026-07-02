@@ -11,8 +11,12 @@ with app.app_context():
     for cod, nome in _PROC_NOMES_FALLBACK.items():
         n = ProducaoSIA.query.filter(
             ProducaoSIA.proc_id == cod,
-            ProducaoSIA.nome_proc == cod
-        ).update({"nome_proc": nome})
+            db.or_(
+                ProducaoSIA.nome_proc == cod,
+                ProducaoSIA.nome_proc == None,
+                ProducaoSIA.nome_proc == "",
+            )
+        ).update({"nome_proc": nome}, synchronize_session=False)
         if n:
             print(f"  {cod}: {n} registros → {nome[:50]}")
             atualizados += n

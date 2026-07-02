@@ -194,11 +194,20 @@ def create_app():
         total_procs    = len(set(r.proc_id for r in rows))
         taxa_apr = (total_qtd_apr / total_qtd_prod * 100) if total_qtd_prod else 0
 
-        # Dados para gráfico mensal
-        mensal_q = (db.session.query(ProducaoSIA.competencia,
-                        func.sum(ProducaoSIA.val_aprovado))
-                    .group_by(ProducaoSIA.competencia)
-                    .order_by(ProducaoSIA.competencia).all())
+        # Dados para gráfico mensal (respeitando filtros ativos)
+        mensal_q = db.session.query(ProducaoSIA.competencia,
+                        func.sum(ProducaoSIA.val_aprovado)).group_by(ProducaoSIA.competencia)
+        if filtro_fin:
+            mensal_q = mensal_q.filter(ProducaoSIA.tpfin == filtro_fin)
+        if filtro_municipio:
+            sub_comps = db.session.query(SIAOrigemProc.competencia).filter(
+                SIAOrigemProc.municipio_cod == filtro_municipio)
+            if filtro_fin:
+                sub_comps = sub_comps.filter(SIAOrigemProc.tpfin == filtro_fin)
+            mensal_q = mensal_q.filter(ProducaoSIA.competencia.in_(sub_comps))
+        if filtro_proc:
+            mensal_q = mensal_q.filter(ProducaoSIA.proc_id == filtro_proc)
+        mensal_q = mensal_q.order_by(ProducaoSIA.competencia).all()
         mensal_labels = [f"{c[:4]}/{c[4:]}" for c,_ in mensal_q]
         mensal_val    = [float(v or 0) for _,v in mensal_q]
 
@@ -212,7 +221,7 @@ def create_app():
 
         # Top 10 por valor aprovado
         top10 = sorted(rows, key=lambda r: r.val_apr, reverse=True)[:10]
-        top10_labels = [f"{r.proc_id}\n{(r.nome_proc or '')[:30]}" for r in top10]
+        top10_labels = [(r.nome_proc or r.proc_id)[:40] for r in top10]
         top10_val    = [r.val_apr for r in top10]
 
         # Origem dos pacientes — usa SIAOrigemProc quando há filtro de financiamento ou proc
