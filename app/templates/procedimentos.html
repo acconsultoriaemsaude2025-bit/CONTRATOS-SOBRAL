@@ -381,8 +381,10 @@ new Chart(document.getElementById('chartMensal'), {
   }
 });
 
-// Gráfico por financiamento
-const coresFin = ['#2563a8','#16a34a','#ca8a04','#dc2626','#7c3aed','#0891b2'];
+// Gráfico por financiamento — cor fixa por tipo
+const coresFinMap = { '06': '#2563a8', '04': '#16a34a', '01': '#ca8a04', '05': '#7c3aed', '07': '#dc2626' };
+const fin_raw = {{ fin_labels | tojson }};
+const coresFin = fin_raw.map(l => { const cod = l.match(/\((\d+)\)/)?.[1]; return coresFinMap[cod] || '#94a3b8'; });
 new Chart(document.getElementById('chartFin'), {
   type: 'doughnut',
   data: {
@@ -395,7 +397,14 @@ new Chart(document.getElementById('chartFin'), {
   },
   options: {
     responsive: true, maintainAspectRatio: true,
-    plugins: { legend: { position: 'right', labels: { font: { size: 11 }, boxWidth: 14 } } },
+    plugins: {
+      legend: { position: 'right', labels: { font: { size: 11 }, boxWidth: 14 } },
+      tooltip: {
+        callbacks: {
+          label: ctx => ` ${ctx.label}: ${ctx.parsed.toLocaleString('pt-BR')} proc (${(ctx.parsed/fin_qtd.reduce((a,b)=>a+b,0)*100).toFixed(1)}%)`
+        }
+      }
+    },
   }
 });
 
