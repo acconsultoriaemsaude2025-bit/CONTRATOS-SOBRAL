@@ -196,7 +196,8 @@ def create_app():
 
         # Dados para gráfico mensal (respeitando filtros ativos)
         mensal_q = db.session.query(ProducaoSIA.competencia,
-                        func.sum(ProducaoSIA.val_aprovado)).group_by(ProducaoSIA.competencia)
+                        func.sum(ProducaoSIA.val_aprovado),
+                        func.sum(ProducaoSIA.qtd_aprovada)).group_by(ProducaoSIA.competencia)
         if filtro_fin:
             mensal_q = mensal_q.filter(ProducaoSIA.tpfin == filtro_fin)
         if filtro_municipio:
@@ -208,8 +209,10 @@ def create_app():
         if filtro_proc:
             mensal_q = mensal_q.filter(ProducaoSIA.proc_id == filtro_proc)
         mensal_q = mensal_q.order_by(ProducaoSIA.competencia).all()
-        mensal_labels = [f"{c[:4]}/{c[4:]}" for c,_ in mensal_q]
-        mensal_val    = [float(v or 0) for _,v in mensal_q]
+        mensal_labels = [f"{c[:4]}/{c[4:]}" for c,_,__ in mensal_q]
+        mensal_val    = [float(v or 0) for _,v,__ in mensal_q]
+        mensal_qtd    = [int(q or 0) for _,__,q in mensal_q]
+        mensal_comps  = [c for c,_,__ in mensal_q]
 
         # Dados para gráfico por financiamento
         fin_q = (db.session.query(ProducaoSIA.tpfin,
@@ -290,7 +293,7 @@ def create_app():
             total_qtd_prod=total_qtd_prod, total_qtd_apr=total_qtd_apr,
             total_val_prod=total_val_prod, total_val_apr=total_val_apr,
             total_procs=total_procs, taxa_apr=taxa_apr,
-            mensal_labels=mensal_labels, mensal_val=mensal_val,
+            mensal_labels=mensal_labels, mensal_val=mensal_val, mensal_qtd=mensal_qtd, mensal_comps=mensal_comps,
             fin_labels=fin_labels, fin_qtd=fin_qtd, fin_val=fin_val,
             top10_labels=top10_labels, top10_val=top10_val,
             tpfin_opts=TPFIN_LABELS,

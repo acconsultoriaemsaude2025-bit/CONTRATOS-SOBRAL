@@ -355,19 +355,34 @@ new Chart(document.getElementById('chartOrigem'), {
 
 const mensal_labels = {{ mensal_labels | tojson }};
 const mensal_val    = {{ mensal_val | tojson }};
+const mensal_qtd    = {{ mensal_qtd | tojson }};
+const mensal_comps  = {{ mensal_comps | tojson }};
 const fin_labels    = {{ fin_labels | tojson }};
 const fin_qtd       = {{ fin_qtd | tojson }};
+const fin_val       = {{ fin_val | tojson }};
 const top10_labels  = {{ top10_labels | tojson }};
 const top10_val     = {{ top10_val | tojson }};
 
+// Utilitário: navega aplicando/trocando um parâmetro na URL atual
+function filtrarPor(param, valor) {
+  const url = new URL(window.location.href);
+  const atual = url.searchParams.get(param);
+  if (atual === valor) {
+    url.searchParams.delete(param); // clique duplo remove o filtro
+  } else {
+    url.searchParams.set(param, valor);
+  }
+  window.location.href = url.toString();
+}
+
 {% if rows %}
-// Gráfico mensal — intensidade proporcional ao valor
+// ── Gráfico mensal ───────────────────────────────────────────────────────────
 const mensal_max = Math.max(...mensal_val, 1);
 const mensal_cores = mensal_val.map(v => {
   const alpha = v > 0 ? (0.25 + 0.75 * (v / mensal_max)).toFixed(2) : 0.08;
   return `rgba(37,99,168,${alpha})`;
 });
-new Chart(document.getElementById('chartMensal'), {
+const chartMensal = new Chart(document.getElementById('chartMensal'), {
   type: 'bar',
   data: {
     labels: mensal_labels,
@@ -382,68 +397,77 @@ new Chart(document.getElementById('chartMensal'), {
   },
   options: {
     responsive: true, maintainAspectRatio: true,
-    plugins: { legend: { display: false } },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          label: ctx => {
+            const val = ctx.parsed.y;
+            const qtd = mensal_qtd[ctx.dataIndex];
+            return [
+              ` Valor: R$ ${val.toLocaleString('pt-BR', {minimumFractionDigits:2})}`,
+              ` Qtd aprovada: ${qtd.toLocaleString('pt-BR')} proc`
+            ];
+          },
+          title: ctx => `Competência ${ctx[0].label}`
+        }
+      }
+    },
     scales: {
       y: { ticks: { callback: v => 'R$' + (v/1000).toFixed(0) + 'k', font: { size: 10 } } },
       x: { ticks: { font: { size: 10 } } }
+    },
+    onClick: (evt, elements) => {
+      if (!elements.length) return;
+      const comp = mensal_comps[elements[0].index]; // ex: "202508"
+      filtrarPor('comp_ini', comp);
+    },
+    onHover: (evt, elements) => {
+      evt.native.target.style.cursor = elements.length ? 'pointer' : 'default';
     }
   }
 });
 
-// Gráfico por financiamento — cor fixa por tipo
+// ── Gráfico por financiamento — cor fixa por tipo ────────────────────────────
 const coresFinMap = { '06': '#2563a8', '04': '#16a34a', '01': '#ca8a04', '05': '#7c3aed', '07': '#dc2626' };
 const fin_raw = {{ fin_labels | tojson }};
 const coresFin = fin_raw.map(l => { const cod = l.match(/\((\d+)\)/)?.[1]; return coresFinMap[cod] || '#94a3b8'; });
-new Chart(document.getElementById('chartFin'), {
-  type: 'doughnut',
-  data: {
-    labels: fin_labels,
-    datasets: [{
-      data: fin_qtd,
-      backgroundColor: coresFin,
-      borderWidth: 2,
-    }]
+
+// Extrai código do label ex: "MAC (06)" → "06"
+function codFromLabel(label) { return label.match(/\((\d+)\)/)?.[1]; }
+
+const donutOpts = (tooltipFn) => ({
+  responsive: true, maintainAspectRatio: true,
+  plugins: {
+    legend: { position: 'right', labels: { font: { size: 11 }, boxWidth: 14 } },
+    tooltip: { callbacks: { label: tooltipFn } }
   },
-  options: {
-    responsive: true, maintainAspectRatio: true,
-    plugins: {
-      legend: { position: 'right', labels: { font: { size: 11 }, boxWidth: 14 } },
-      tooltip: {
-        callbacks: {
-          label: ctx => ` ${ctx.label}: ${ctx.parsed.toLocaleString('pt-BR')} proc (${(ctx.parsed/fin_qtd.reduce((a,b)=>a+b,0)*100).toFixed(1)}%)`
-        }
-      }
-    },
+  onClick: (evt, elements) => {
+    if (!elements.length) return;
+    const cod = codFromLabel(fin_labels[elements[0].index]);
+    if (cod) filtrarPor('tpfin', cod);
+  },
+  onHover: (evt, elements) => {
+    evt.native.target.style.cursor = elements.length ? 'pointer' : 'default';
   }
 });
 
-// Gráfico por financiamento — valor aprovado
-const fin_val = {{ fin_val | tojson }};
+const fin_qtd_total = fin_qtd.reduce((a,b)=>a+b,0);
+new Chart(document.getElementById('chartFin'), {
+  type: 'doughnut',
+  data: { labels: fin_labels, datasets: [{ data: fin_qtd, backgroundColor: coresFin, borderWidth: 2 }] },
+  options: donutOpts(ctx => ` ${ctx.label}: ${ctx.parsed.toLocaleString('pt-BR')} proc (${(ctx.parsed/fin_qtd_total*100).toFixed(1)}%)`)
+});
+
 const fin_val_total = fin_val.reduce((a,b)=>a+b,0);
 new Chart(document.getElementById('chartFinVal'), {
   type: 'doughnut',
-  data: {
-    labels: fin_labels,
-    datasets: [{
-      data: fin_val,
-      backgroundColor: coresFin,
-      borderWidth: 2,
-    }]
-  },
-  options: {
-    responsive: true, maintainAspectRatio: true,
-    plugins: {
-      legend: { position: 'right', labels: { font: { size: 11 }, boxWidth: 14 } },
-      tooltip: {
-        callbacks: {
-          label: ctx => ` ${ctx.label}: R$ ${ctx.parsed.toLocaleString('pt-BR', {minimumFractionDigits:2})} (${(ctx.parsed/fin_val_total*100).toFixed(1)}%)`
-        }
-      }
-    },
-  }
+  data: { labels: fin_labels, datasets: [{ data: fin_val, backgroundColor: coresFin, borderWidth: 2 }] },
+  options: donutOpts(ctx => ` ${ctx.label}: R$ ${ctx.parsed.toLocaleString('pt-BR', {minimumFractionDigits:2})} (${(ctx.parsed/fin_val_total*100).toFixed(1)}%)`)
 });
 
-// Top 10 procedimentos
+// ── Top 10 procedimentos ─────────────────────────────────────────────────────
+const top10_procs_raw = {{ rows | map(attribute='proc_id') | list | tojson }};
 new Chart(document.getElementById('chartProc'), {
   type: 'bar',
   data: {
