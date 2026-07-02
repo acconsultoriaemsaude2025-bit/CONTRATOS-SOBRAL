@@ -60,8 +60,7 @@
       </div>
       <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
         <span class="badge badge-{{ c.status }}" style="font-size:12px;">{{ c.status }}</span>
-        <a href="{{ url_for('detalhe_contrato', numero=c.numero) }}" class="btn btn-sm" style="background:rgba(255,255,255,.2); color:#fff; border:1px solid rgba(255,255,255,.3);">Ver detalhes →</a>
-        {% if c.url %}<a href="{{ c.url }}" target="_blank" class="btn btn-sm" style="background:rgba(255,255,255,.2); color:#fff; border:1px solid rgba(255,255,255,.3);">Portal ↗</a>{% endif %}
+{% if c.url %}<a href="{{ c.url }}" target="_blank" class="btn btn-sm" style="background:rgba(255,255,255,.2); color:#fff; border:1px solid rgba(255,255,255,.3);">Portal ↗</a>{% endif %}
       </div>
     </div>
 
