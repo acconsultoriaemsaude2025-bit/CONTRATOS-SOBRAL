@@ -19,7 +19,7 @@
   --sidebar-w: 220px;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--bg); color: var(--texto); font-size: 14px; display: flex; min-height: 100vh; }
+body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--bg); color: var(--texto); font-size: 14px; }
 
 /* ── SIDEBAR ── */
 .sidebar {
@@ -122,12 +122,8 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--bg); color:
 /* ── CONTEÚDO ── */
 .page-content {
   margin-left: var(--sidebar-w);
-  flex: 1;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
 }
-main { padding: 24px; flex: 1; }
+main { padding: 24px; }
 
 /* CARDS */
 .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 28px; }
@@ -210,7 +206,7 @@ a.link-contrato:hover { text-decoration: underline; }
   .sidebar.aberta { transform: translateX(0); }
   .topbar { display: flex; }
   .page-content { margin-left: 0; padding-top: 52px; }
-  main { padding: 12px; }
+  main { padding: 12px !important; }
   .cards { grid-template-columns: 1fr 1fr; gap: 10px; }
   .card .valor { font-size: 16px; }
   .graficos { grid-template-columns: 1fr; }
