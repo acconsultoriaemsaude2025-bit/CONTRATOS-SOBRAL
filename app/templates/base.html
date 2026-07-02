@@ -26,18 +26,42 @@ nav {
   color: #fff;
   display: flex;
   align-items: center;
-  padding: 0 24px;
+  padding: 0 20px;
   height: 56px;
-  gap: 24px;
+  gap: 16px;
   box-shadow: 0 2px 4px rgba(0,0,0,.3);
   position: sticky; top: 0; z-index: 100;
+  flex-wrap: wrap;
 }
-nav .marca { font-size: 16px; font-weight: 700; white-space: nowrap; }
+nav .marca { font-size: 15px; font-weight: 700; white-space: nowrap; }
 nav .marca span { opacity: .7; font-weight: 400; }
-nav a { color: rgba(255,255,255,.85); text-decoration: none; font-size: 13px; padding: 4px 8px; border-radius: 4px; }
+nav a { color: rgba(255,255,255,.85); text-decoration: none; font-size: 13px; padding: 4px 8px; border-radius: 4px; white-space: nowrap; }
 nav a:hover { background: rgba(255,255,255,.15); color: #fff; }
 nav .spacer { flex: 1; }
-nav .user { font-size: 12px; opacity: .75; }
+nav .user { font-size: 12px; opacity: .75; white-space: nowrap; }
+
+/* Hambúrguer */
+.nav-toggle { display: none; background: none; border: none; cursor: pointer; padding: 6px; }
+.nav-toggle span { display: block; width: 22px; height: 2px; background: #fff; margin: 5px 0; border-radius: 2px; transition: .3s; }
+.nav-links { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+
+@media (max-width: 768px) {
+  nav { height: auto; padding: 0 16px; flex-wrap: nowrap; }
+  .nav-toggle { display: block; margin-left: auto; }
+  .nav-links {
+    display: none;
+    flex-direction: column;
+    align-items: flex-start;
+    width: 100%;
+    padding: 10px 0 14px;
+    gap: 2px;
+    border-top: 1px solid rgba(255,255,255,.15);
+  }
+  .nav-links.aberto { display: flex; }
+  .nav-links a, .nav-links .user { padding: 9px 12px; width: 100%; border-radius: 6px; font-size: 14px; }
+  .nav-links .spacer { display: none; }
+  nav .marca { padding: 14px 0; }
+}
 
 /* MAIN */
 main { padding: 24px; max-width: 1280px; margin: 0 auto; }
@@ -124,10 +148,15 @@ a.link-contrato:hover { text-decoration: underline; }
 
 /* RESPONSIVO */
 @media (max-width: 640px) {
-  main { padding: 12px; }
-  .cards { grid-template-columns: 1fr 1fr; }
+  main { padding: 10px; }
+  .cards { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .card .valor { font-size: 16px; }
   .graficos { grid-template-columns: 1fr; }
   .barra { display: none; }
+  .tabela-wrap { overflow-x: auto; }
+  table { min-width: 480px; }
+  .modal { min-width: unset; width: 95vw; padding: 20px 16px; }
+  .tabela-header { flex-wrap: wrap; gap: 8px; }
 }
 </style>
 {% block head %}{% endblock %}
@@ -136,19 +165,24 @@ a.link-contrato:hover { text-decoration: underline; }
 {% if current_user.is_authenticated %}
 <nav>
   <div class="marca">Contratos <span>SMS Sobral</span></div>
-  <a href="{{ url_for('dashboard') }}">Dashboard</a>
-  <a href="{{ url_for('procedimentos') }}">Procedimentos</a>
-  <a href="{{ url_for('itens_contrato') }}">Itens do Contrato</a>
-  <a href="{{ url_for('eletivas_federais') }}">Eletivas Federais 2026</a>
-  <a href="{{ url_for('licencas') }}">Licenças / Alvarás</a>
-  {% if current_user.admin %}
-  <a href="{{ url_for('admin_contratos') }}">Contratos</a>
-  <a href="{{ url_for('admin_usuarios') }}">Usuários</a>
-  <a href="{{ url_for('auditoria') }}">Auditoria</a>
-  {% endif %}
-  <div class="spacer"></div>
-  <span class="user">{{ current_user.nome }}</span>
-  <a href="{{ url_for('logout') }}">Sair</a>
+  <button class="nav-toggle" onclick="document.querySelector('.nav-links').classList.toggle('aberto')" aria-label="Menu">
+    <span></span><span></span><span></span>
+  </button>
+  <div class="nav-links">
+    <a href="{{ url_for('dashboard') }}">Dashboard</a>
+    <a href="{{ url_for('procedimentos') }}">Procedimentos</a>
+    <a href="{{ url_for('itens_contrato') }}">Itens do Contrato</a>
+    <a href="{{ url_for('eletivas_federais') }}">Eletivas Federais 2026</a>
+    <a href="{{ url_for('licencas') }}">Licenças / Alvarás</a>
+    {% if current_user.admin %}
+    <a href="{{ url_for('admin_contratos') }}">Contratos</a>
+    <a href="{{ url_for('admin_usuarios') }}">Usuários</a>
+    <a href="{{ url_for('auditoria') }}">Auditoria</a>
+    {% endif %}
+    <div class="spacer"></div>
+    <span class="user">{{ current_user.nome }}</span>
+    <a href="{{ url_for('logout') }}">Sair</a>
+  </div>
 </nav>
 {% endif %}
 
