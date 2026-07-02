@@ -42,38 +42,30 @@ body::before {
   position: fixed;
   top: 0; left: 0; bottom: 0;
   z-index: 200;
-  transition: transform .3s ease, width .3s ease;
+  transform: translateX(-100%);
+  transition: transform .28s ease;
   overflow-y: auto;
   overflow-x: hidden;
+  box-shadow: 4px 0 20px rgba(0,0,0,.18);
 }
-/* Estado colapsado no desktop */
-body.sidebar-fechada .sidebar {
-  transform: translateX(-100%);
+.sidebar:hover,
+.sidebar-trigger:hover ~ .sidebar,
+.sidebar-trigger:hover + .sidebar {
+  transform: translateX(0);
 }
-body.sidebar-fechada .page-content {
-  margin-left: 0;
-}
-/* Botão flutuante de toggle (desktop) */
-.btn-toggle-sidebar {
+/* Faixa invisível na borda esquerda que aciona o hover */
+.sidebar-trigger {
   position: fixed;
-  top: 16px;
-  left: 16px;
-  z-index: 210;
-  background: var(--azul);
-  border: none;
-  border-radius: 8px;
-  width: 36px; height: 36px;
-  cursor: pointer;
-  display: none;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 2px 8px rgba(0,0,0,.25);
-  transition: left .3s ease;
+  top: 0; left: 0; bottom: 0;
+  width: 10px;
+  z-index: 201;
 }
-body.sidebar-fechada .btn-toggle-sidebar {
-  display: flex;
-}
-.btn-toggle-sidebar svg { width: 18px; height: 18px; fill: #fff; }
+/* Mantém sidebar aberta quando o mouse está nela */
+.sidebar:hover { transform: translateX(0); }
+/* Conteúdo sempre com margem zero (sidebar flutua por cima) */
+.page-content { margin-left: 0 !important; }
+/* Botão toggle — escondido no desktop, não é mais necessário */
+.btn-toggle-sidebar { display: none !important; }
 .sidebar-marca {
   padding: 20px 18px 16px;
   border-bottom: 1px solid rgba(255,255,255,.1);
@@ -268,11 +260,7 @@ a.link-contrato:hover { text-decoration: underline; }
 
 <!-- SIDEBAR -->
 <aside class="sidebar" id="sidebar">
-  <div class="sidebar-marca" style="position:relative;">
-    <button onclick="toggleSidebar()" aria-label="Fechar menu"
-      style="position:absolute;top:10px;right:10px;background:rgba(255,255,255,.15);border:none;border-radius:6px;width:28px;height:28px;cursor:pointer;display:flex;align-items:center;justify-content:center;">
-      <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" width="14" height="14"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-    </button>
+  <div class="sidebar-marca">
     <img src="/static/logo.png" alt="Logo" class="logo-img">
     <h1>Monitoramento de Contratos</h1>
     <p>CODR</p>
@@ -298,12 +286,8 @@ a.link-contrato:hover { text-decoration: underline; }
   </div>
 </aside>
 
-<!-- BOTÃO FLUTUANTE (aparece quando sidebar está fechada, desktop) -->
-<button class="btn-toggle-sidebar" onclick="toggleSidebar()" aria-label="Abrir menu">
-  <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" width="18" height="18">
-    <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
-  </svg>
-</button>
+<!-- FAIXA INVISÍVEL QUE ACIONA O HOVER DA SIDEBAR -->
+<div class="sidebar-trigger"></div>
 
 <!-- TOPBAR mobile -->
 <div class="topbar">
@@ -314,7 +298,6 @@ a.link-contrato:hover { text-decoration: underline; }
 </div>
 
 <script>
-// Mobile
 function abrirSidebar() {
   document.getElementById('sidebar').classList.add('aberta');
   document.getElementById('overlay').classList.add('aberto');
@@ -324,16 +307,6 @@ function fecharSidebar() {
   document.getElementById('overlay').classList.remove('aberto');
 }
 document.querySelectorAll('.sidebar-nav a').forEach(a => a.addEventListener('click', fecharSidebar));
-
-// Desktop toggle
-function toggleSidebar() {
-  const fechada = document.body.classList.toggle('sidebar-fechada');
-  localStorage.setItem('sidebarFechada', fechada ? '1' : '0');
-}
-// Restaura estado salvo
-if (localStorage.getItem('sidebarFechada') === '1') {
-  document.body.classList.add('sidebar-fechada');
-}
 </script>
 
 <div class="page-content">
