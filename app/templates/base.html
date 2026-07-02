@@ -48,24 +48,16 @@ body::before {
   overflow-x: hidden;
   box-shadow: 4px 0 20px rgba(0,0,0,.18);
 }
-.sidebar:hover,
-.sidebar-trigger:hover ~ .sidebar,
-.sidebar-trigger:hover + .sidebar {
-  transform: translateX(0);
-}
-/* Faixa invisível na borda esquerda que aciona o hover */
+.sidebar.visivel { transform: translateX(0); }
+/* Faixa invisível na borda esquerda */
 .sidebar-trigger {
   position: fixed;
   top: 0; left: 0; bottom: 0;
-  width: 10px;
+  width: 16px;
   z-index: 201;
+  cursor: pointer;
 }
-/* Mantém sidebar aberta quando o mouse está nela */
-.sidebar:hover { transform: translateX(0); }
-/* Conteúdo sempre com margem zero (sidebar flutua por cima) */
 .page-content { margin-left: 0 !important; }
-/* Botão toggle — escondido no desktop, não é mais necessário */
-.btn-toggle-sidebar { display: none !important; }
 .sidebar-marca {
   padding: 20px 18px 16px;
   border-bottom: 1px solid rgba(255,255,255,.1);
@@ -298,6 +290,7 @@ a.link-contrato:hover { text-decoration: underline; }
 </div>
 
 <script>
+// Mobile
 function abrirSidebar() {
   document.getElementById('sidebar').classList.add('aberta');
   document.getElementById('overlay').classList.add('aberto');
@@ -307,6 +300,20 @@ function fecharSidebar() {
   document.getElementById('overlay').classList.remove('aberto');
 }
 document.querySelectorAll('.sidebar-nav a').forEach(a => a.addEventListener('click', fecharSidebar));
+
+// Desktop hover
+(function() {
+  var sidebar  = document.getElementById('sidebar');
+  var trigger  = document.querySelector('.sidebar-trigger');
+  if (!sidebar || !trigger) return;
+  var timer;
+  function mostrar() { clearTimeout(timer); sidebar.classList.add('visivel'); }
+  function esconder() { timer = setTimeout(function(){ sidebar.classList.remove('visivel'); }, 200); }
+  trigger.addEventListener('mouseenter', mostrar);
+  sidebar.addEventListener('mouseenter', mostrar);
+  sidebar.addEventListener('mouseleave', esconder);
+  trigger.addEventListener('mouseleave', esconder);
+})();
 </script>
 
 <div class="page-content">
