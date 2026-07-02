@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Registro de Auditoria{% endblock %}
+{% block head %}
+<style>
+  .audit-table { width:100%; border-collapse:collapse; font-size:12px; }
+  .audit-table th { background:#1e293b; color:#fff; padding:9px 12px; text-align:left; font-size:11px; }
+  .audit-table td { padding:8px 12px; border-bottom:1px solid #e2e8f0; vertical-align:top; }
+  .audit-table tr:hover td { background:#f8fafc; }
+  .badge-criar  { background:#dcfce7; color:#15803d; padding:2px 8px; border-radius:10px; font-size:10px; font-weight:600; }
+  .badge-editar { background:#dbeafe; color:#1d4ed8; padding:2px 8px; border-radius:10px; font-size:10px; font-weight:600; }
+  .badge-excluir{ background:#fee2e2; color:#dc2626; padding:2px 8px; border-radius:10px; font-size:10px; font-weight:600; }
+  .badge-lancar { background:#fef9c3; color:#92400e; padding:2px 8px; border-radius:10px; font-size:10px; font-weight:600; }
+  .entidade-tag { background:#f1f5f9; color:#475569; padding:2px 8px; border-radius:8px; font-size:10px; }
+</style>
+{% endblock %}
+{% block content %}
+<div style="display:flex; align-items:center; gap:12px; margin-bottom:20px;">
+  <h1 style="font-size:20px; font-weight:700; color:#1e293b; margin:0;">Registro de Auditoria</h1>
+  <span style="font-size:12px; color:#64748b;">Últimas {{ logs|length }} ações registradas</span>
+</div>
+
+{% if logs %}
+<div style="background:#fff; border:1px solid #e2e8f0; border-radius:10px; overflow:hidden;">
+  <table class="audit-table">
+    <thead>
+      <tr>
+        <th style="width:150px;">Data / Hora</th>
+        <th style="width:140px;">Usuário</th>
+        <th style="width:80px;">Ação</th>
+        <th style="width:130px;">Módulo</th>
+        <th>Descrição</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for log in logs %}
+      <tr>
+        <td style="color:#64748b; white-space:nowrap;">
+          {{ log.criado_em.strftime('%d/%m/%Y') }}<br>
+          <span style="font-size:11px;">{{ log.criado_em.strftime('%H:%M:%S') }}</span>
+        </td>
+        <td style="font-weight:600; color:#1e293b;">{{ log.usuario_nom or '—' }}</td>
+        <td><span class="badge-{{ log.acao }}">{{ log.acao }}</span></td>
+        <td>
+          <span class="entidade-tag">
+            {% if log.entidade == 'licenca' %}Alvará/Licença
+            {% elif log.entidade == 'item_contrato' %}Contrato Estado
+            {% elif log.entidade == 'pactuacao_federal' %}Pactuação Federal
+            {% else %}{{ log.entidade }}{% endif %}
+          </span>
+        </td>
+        <td style="color:#374151;">{{ log.descricao }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div style="text-align:center; padding:60px; color:#94a3b8;">
+  Nenhuma ação registrada ainda.
+</div>
+{% endif %}
+{% endblock %}

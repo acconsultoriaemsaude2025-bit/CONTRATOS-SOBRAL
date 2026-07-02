@@ -144,6 +144,7 @@ a.link-contrato:hover { text-decoration: underline; }
   {% if current_user.admin %}
   <a href="{{ url_for('admin_contratos') }}">Contratos</a>
   <a href="{{ url_for('admin_usuarios') }}">Usuários</a>
+  <a href="{{ url_for('auditoria') }}">Auditoria</a>
   {% endif %}
   <div class="spacer"></div>
   <span class="user">{{ current_user.nome }}</span>

@@ -329,6 +329,21 @@ class RealizadoFederal(db.Model):
     __table_args__ = (db.UniqueConstraint("pactuacao_id", "competencia", name="uq_realizado_fed"),)
 
 
+class AuditLog(db.Model):
+    """Registro de auditoria — quem fez o quê e quando."""
+    __tablename__ = "audit_log"
+    id          = db.Column(db.Integer, primary_key=True)
+    usuario_id  = db.Column(db.Integer, db.ForeignKey("usuarios.id"), nullable=True)
+    usuario_nom = db.Column(db.String(100))          # nome gravado na hora (mesmo se user deletado)
+    acao        = db.Column(db.String(20))            # criar | editar | excluir
+    entidade    = db.Column(db.String(50))            # licenca | item_contrato | pactuacao | ...
+    entidade_id = db.Column(db.Integer)
+    descricao   = db.Column(db.Text)                 # resumo legível da alteração
+    criado_em   = db.Column(db.DateTime, default=datetime.utcnow)
+
+    usuario = db.relationship("Usuario", foreign_keys=[usuario_id])
+
+
 class SIAArquivo(db.Model):
     """Controla quais arquivos DBC já foram importados."""
     __tablename__ = "sia_arquivos"

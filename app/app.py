@@ -2,7 +2,7 @@ import click
 from flask import Flask, render_template, jsonify, redirect, url_for, request, flash
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from config import Config
-from models import db, Usuario, Contrato, Empenho, Liquidacao, Pagamento
+from models import db, Usuario, Contrato, Empenho, Liquidacao, Pagamento, AuditLog
 from scraper.sync import sync_contrato
 from alerts.telegram import enviar, formatar_novidades
 from sqlalchemy import func
@@ -27,6 +27,21 @@ def create_app():
             return f"{int(value):,}".replace(",", ".")
         except Exception:
             return str(value)
+
+    def registrar_auditoria(acao, entidade, entidade_id, descricao):
+        """Grava uma linha de auditoria com o usuário logado atual."""
+        try:
+            log = AuditLog(
+                usuario_id  = current_user.id if current_user.is_authenticated else None,
+                usuario_nom = current_user.nome if current_user.is_authenticated else "sistema",
+                acao        = acao,
+                entidade    = entidade,
+                entidade_id = entidade_id,
+                descricao   = descricao,
+            )
+            db.session.add(log)
+        except Exception:
+            pass  # auditoria nunca pode quebrar o fluxo principal
 
     login_manager = LoginManager(app)
     login_manager.login_view = "login"
@@ -582,6 +597,8 @@ def create_app():
             ordem=int(request.form.get("ordem", 0) or 0),
         )
         db.session.add(it)
+        db.session.flush()
+        registrar_auditoria("criar", "item_contrato", it.id, f"Cadastrou procedimento: {it.descricao[:60]} | R$ {it.valor_unit}")
         db.session.commit()
         flash(f"Procedimento '{it.descricao[:40]}' cadastrado.", "ok")
         return redirect(url_for("itens_contrato"))
@@ -603,6 +620,7 @@ def create_app():
             it.valor_unit    = request.form.get("valor_unit", 0) or 0
             it.meta_anual_val = request.form.get("meta_anual_val", 0) or 0
             it.ordem         = int(request.form.get("ordem", 0) or 0)
+            registrar_auditoria("editar", "item_contrato", it.id, f"Editou procedimento: {it.descricao[:60]} | R$ {it.valor_unit}")
             db.session.commit()
             flash("Procedimento atualizado.", "ok")
             return redirect(url_for("itens_contrato"))
@@ -617,6 +635,7 @@ def create_app():
             return redirect(url_for("itens_contrato"))
         it = db.session.get(ItemContrato, iid)
         if it:
+            registrar_auditoria("excluir", "item_contrato", it.id, f"Excluiu procedimento: {it.descricao[:60]}")
             db.session.delete(it)
             db.session.commit()
             flash("Procedimento removido.", "ok")
@@ -640,7 +659,9 @@ def create_app():
             flash("Dados inválidos.", "erro")
             return redirect(url_for("itens_contrato"))
 
+        it = db.session.get(ItemContrato, item_id)
         lanc = LancamentoItem.query.filter_by(item_id=item_id, competencia=competencia).first()
+        acao_txt = "editou" if lanc else "lançou"
         if lanc:
             lanc.qtd_realizada = qtd
             lanc.val_realizado = val
@@ -649,6 +670,9 @@ def create_app():
             lanc = LancamentoItem(item_id=item_id, competencia=competencia,
                                   qtd_realizada=qtd, val_realizado=val, observacao=obs)
             db.session.add(lanc)
+        proc_nome = it.descricao[:40] if it else f"item {item_id}"
+        registrar_auditoria("lancar", "item_contrato", item_id,
+            f"{acao_txt.capitalize()} realizado contrato estado — {proc_nome} | {competencia} | qtd {qtd} | R$ {val:.2f}")
         db.session.commit()
         flash("Lançamento salvo.", "ok")
         return redirect(url_for("itens_contrato"))
@@ -777,6 +801,7 @@ def create_app():
         if not comp:
             return jsonify({"ok": False, "msg": "Competência inválida"}), 400
 
+        itens_audit = []
         for item in lancamentos:
             pid = int(item.get("pactuacao_id", 0))
             qtd = int(item.get("qtd", 0) or 0)
@@ -792,6 +817,11 @@ def create_app():
                 r = RealizadoFederal(pactuacao_id=pid, competencia=comp,
                                      qtd_realizada=qtd, val_realizado=val)
                 db.session.add(r)
+            if qtd > 0:
+                itens_audit.append(f"{pac.municipio}/{pac.proc_nome[:25]} qtd={qtd} R${val:.2f}")
+        if itens_audit:
+            registrar_auditoria("lancar", "pactuacao_federal", 0,
+                f"Salvou mês {comp}: " + "; ".join(itens_audit))
         db.session.commit()
         return jsonify({"ok": True})
 
@@ -843,6 +873,8 @@ def create_app():
             l.arquivo_dados = arq.read()
 
         db.session.add(l)
+        db.session.flush()
+        registrar_auditoria("criar", "licenca", l.id, f"Cadastrou licença: {l.tipo} | Nº {l.numero or '—'} | Venc. {l.data_vencimento or '—'}")
         db.session.commit()
         flash(f"Licença '{l.tipo}' cadastrada.", "ok")
         return redirect(url_for("licencas"))
@@ -873,6 +905,7 @@ def create_app():
             if arq and arq.filename:
                 l.arquivo_nome  = arq.filename
                 l.arquivo_dados = arq.read()
+            registrar_auditoria("editar", "licenca", l.id, f"Editou licença: {l.tipo} | Nº {l.numero or '—'} | Situação: {l.situacao}")
             db.session.commit()
             flash(f"Licença '{l.tipo}' atualizada.", "ok")
             return redirect(url_for("licencas"))
@@ -888,6 +921,7 @@ def create_app():
             return redirect(url_for("licencas"))
         l = db.session.get(Licenca, lid)
         if l:
+            registrar_auditoria("excluir", "licenca", l.id, f"Excluiu licença: {l.tipo} | Nº {l.numero or '—'}")
             db.session.delete(l)
             db.session.commit()
             flash("Licença excluída.", "ok")
@@ -908,6 +942,16 @@ def create_app():
             download_name=l.arquivo_nome,
             as_attachment=False,
         )
+
+    # ---------- AUDITORIA ----------
+    @app.route("/auditoria")
+    @login_required
+    def auditoria():
+        if not current_user.admin:
+            flash("Acesso negado.", "erro")
+            return redirect(url_for("dashboard"))
+        logs = AuditLog.query.order_by(AuditLog.criado_em.desc()).limit(500).all()
+        return render_template("auditoria.html", logs=logs)
 
     # ---------- CLI ----------
     @app.cli.command("init-db")
