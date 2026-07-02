@@ -189,12 +189,17 @@
     <canvas id="chartMensal" style="max-height:200px;"></canvas>
   </div>
   <div class="chart-card">
-    <h3>Distribuição por financiamento (qtd aprovada)</h3>
-    <canvas id="chartFin" style="max-height:200px;"></canvas>
-  </div>
-  <div class="chart-card">
-    <h3>Distribuição por financiamento (valor aprovado)</h3>
-    <canvas id="chartFinVal" style="max-height:200px;"></canvas>
+    <h3>Distribuição por financiamento</h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+      <div>
+        <p style="font-size:11px;color:#64748b;text-align:center;margin:0 0 6px;">Quantidade aprovada</p>
+        <canvas id="chartFin" style="max-height:180px;"></canvas>
+      </div>
+      <div>
+        <p style="font-size:11px;color:#64748b;text-align:center;margin:0 0 6px;">Valor aprovado</p>
+        <canvas id="chartFinVal" style="max-height:180px;"></canvas>
+      </div>
+    </div>
   </div>
   <div class="chart-card" style="grid-column:1/-1;">
     <h3>Top 10 procedimentos por valor aprovado</h3>
