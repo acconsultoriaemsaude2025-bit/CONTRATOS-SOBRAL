@@ -16,64 +16,124 @@
   --card: #ffffff;
   --borda: #e2e8f0;
   --texto: #1e293b;
+  --sidebar-w: 220px;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--bg); color: var(--texto); font-size: 14px; }
+body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--bg); color: var(--texto); font-size: 14px; display: flex; min-height: 100vh; }
 
-/* NAVBAR */
-nav {
+/* ── SIDEBAR ── */
+.sidebar {
+  width: var(--sidebar-w);
+  min-height: 100vh;
   background: var(--azul);
-  color: #fff;
   display: flex;
-  align-items: center;
-  padding: 0 20px;
-  height: 56px;
-  gap: 16px;
-  box-shadow: 0 2px 4px rgba(0,0,0,.3);
-  position: sticky; top: 0; z-index: 100;
-  flex-wrap: wrap;
+  flex-direction: column;
+  position: fixed;
+  top: 0; left: 0; bottom: 0;
+  z-index: 200;
+  transition: transform .25s ease;
+  overflow-y: auto;
 }
-nav .marca { font-size: 15px; font-weight: 700; white-space: nowrap; }
-nav .marca span { opacity: .7; font-weight: 400; }
-nav a { color: rgba(255,255,255,.85); text-decoration: none; font-size: 13px; padding: 4px 8px; border-radius: 4px; white-space: nowrap; }
-nav a:hover { background: rgba(255,255,255,.15); color: #fff; }
-nav .spacer { flex: 1; }
-nav .user { font-size: 12px; opacity: .75; white-space: nowrap; }
-
-/* Hambúrguer */
-.nav-toggle { display: none; background: none; border: none; cursor: pointer; padding: 6px; }
-.nav-toggle span { display: block; width: 22px; height: 2px; background: #fff; margin: 5px 0; border-radius: 2px; transition: .3s; }
-.nav-links { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
-
-@media (max-width: 768px) {
-  nav { height: auto; padding: 0 16px; flex-wrap: nowrap; }
-  .nav-toggle { display: block; margin-left: auto; }
-  .nav-links {
-    display: none;
-    flex-direction: column;
-    align-items: flex-start;
-    width: 100%;
-    padding: 10px 0 14px;
-    gap: 2px;
-    border-top: 1px solid rgba(255,255,255,.15);
-  }
-  .nav-links.aberto { display: flex; }
-  .nav-links a, .nav-links .user { padding: 9px 12px; width: 100%; border-radius: 6px; font-size: 14px; }
-  .nav-links .spacer { display: none; }
-  nav .marca { padding: 14px 0; }
+.sidebar-marca {
+  padding: 20px 18px 16px;
+  border-bottom: 1px solid rgba(255,255,255,.1);
 }
+.sidebar-marca .logo-img {
+  width: 80px; height: auto;
+  display: block;
+  margin: 0 auto 10px;
+}
+.sidebar-marca h1 {
+  font-size: 13px; font-weight: 700; color: #fff;
+  text-align: center; line-height: 1.3;
+}
+.sidebar-marca p {
+  font-size: 10px; color: rgba(255,255,255,.55);
+  text-align: center; margin-top: 2px;
+}
+.sidebar-nav {
+  flex: 1;
+  padding: 12px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.sidebar-nav a {
+  display: flex; align-items: center; gap: 10px;
+  color: rgba(255,255,255,.8);
+  text-decoration: none;
+  font-size: 13px;
+  padding: 9px 12px;
+  border-radius: 7px;
+  transition: background .15s, color .15s;
+  white-space: nowrap;
+}
+.sidebar-nav a:hover, .sidebar-nav a.ativo {
+  background: rgba(255,255,255,.15);
+  color: #fff;
+}
+.sidebar-nav .sep {
+  height: 1px; background: rgba(255,255,255,.1);
+  margin: 8px 4px;
+}
+.sidebar-nav .grupo {
+  font-size: 10px; text-transform: uppercase; letter-spacing: .6px;
+  color: rgba(255,255,255,.4); padding: 6px 12px 2px; font-weight: 600;
+}
+.sidebar-footer {
+  padding: 14px 16px;
+  border-top: 1px solid rgba(255,255,255,.1);
+}
+.sidebar-footer .user-nome {
+  font-size: 12px; color: rgba(255,255,255,.7);
+  margin-bottom: 8px; text-align: center;
+}
+.sidebar-footer a {
+  display: block; text-align: center;
+  color: rgba(255,255,255,.7); font-size: 12px;
+  text-decoration: none; padding: 6px;
+  border-radius: 6px;
+  transition: background .15s;
+}
+.sidebar-footer a:hover { background: rgba(255,255,255,.15); color: #fff; }
 
-/* MAIN */
-main { padding: 24px; max-width: 1280px; margin: 0 auto; }
+/* ── TOPBAR mobile ── */
+.topbar {
+  display: none;
+  position: fixed; top: 0; left: 0; right: 0;
+  height: 52px; background: var(--azul);
+  align-items: center; padding: 0 16px; gap: 12px;
+  z-index: 300; box-shadow: 0 2px 6px rgba(0,0,0,.25);
+}
+.topbar .marca { font-size: 14px; font-weight: 700; color: #fff; flex: 1; }
+.hamburger {
+  background: none; border: none; cursor: pointer; padding: 6px;
+  display: flex; flex-direction: column; gap: 5px;
+}
+.hamburger span { display: block; width: 22px; height: 2px; background: #fff; border-radius: 2px; transition: .3s; }
+
+/* Overlay escuro ao abrir sidebar no mobile */
+.sidebar-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,.45); z-index: 190;
+}
+.sidebar-overlay.aberto { display: block; }
+
+/* ── CONTEÚDO ── */
+.page-content {
+  margin-left: var(--sidebar-w);
+  flex: 1;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+main { padding: 24px; flex: 1; }
 
 /* CARDS */
 .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 28px; }
 .card {
-  background: var(--card);
-  border-radius: 10px;
-  padding: 20px;
-  box-shadow: 0 1px 3px rgba(0,0,0,.08);
-  border-left: 4px solid var(--azul-claro);
+  background: var(--card); border-radius: 10px; padding: 20px;
+  box-shadow: 0 1px 3px rgba(0,0,0,.08); border-left: 4px solid var(--azul-claro);
 }
 .card.verde { border-left-color: var(--verde); }
 .card.amarelo { border-left-color: var(--amarelo); }
@@ -84,7 +144,7 @@ main { padding: 24px; max-width: 1280px; margin: 0 auto; }
 
 /* TABELA */
 .tabela-wrap { background: var(--card); border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,.08); overflow: hidden; }
-.tabela-header { padding: 16px 20px; border-bottom: 1px solid var(--borda); display: flex; align-items: center; gap: 12px; }
+.tabela-header { padding: 16px 20px; border-bottom: 1px solid var(--borda); display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .tabela-header h2 { font-size: 15px; font-weight: 600; }
 table { width: 100%; border-collapse: collapse; }
 th { background: #f8fafc; font-size: 11px; text-transform: uppercase; letter-spacing: .4px; color: var(--cinza); padding: 10px 16px; text-align: left; border-bottom: 2px solid var(--borda); }
@@ -129,7 +189,7 @@ tr:hover td { background: #f8fafc; }
 canvas { max-height: 220px; }
 
 /* MODAL */
-.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 200; align-items: center; justify-content: center; }
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 400; align-items: center; justify-content: center; }
 .modal-overlay.aberto { display: flex; }
 .modal { background: #fff; border-radius: 12px; padding: 28px; min-width: 360px; max-width: 480px; box-shadow: 0 20px 40px rgba(0,0,0,.2); }
 .modal h3 { font-size: 16px; font-weight: 700; margin-bottom: 20px; }
@@ -142,13 +202,15 @@ canvas { max-height: 220px; }
 /* LINK */
 a.link-contrato { color: var(--azul-claro); text-decoration: none; font-weight: 600; }
 a.link-contrato:hover { text-decoration: underline; }
-
-/* PEQUENO */
 .sub-texto { font-size: 11px; color: var(--cinza); }
 
-/* RESPONSIVO */
-@media (max-width: 640px) {
-  main { padding: 10px; }
+/* ── RESPONSIVO ── */
+@media (max-width: 768px) {
+  .sidebar { transform: translateX(-100%); }
+  .sidebar.aberta { transform: translateX(0); }
+  .topbar { display: flex; }
+  .page-content { margin-left: 0; padding-top: 52px; }
+  main { padding: 12px; }
   .cards { grid-template-columns: 1fr 1fr; gap: 10px; }
   .card .valor { font-size: 16px; }
   .graficos { grid-template-columns: 1fr; }
@@ -156,34 +218,68 @@ a.link-contrato:hover { text-decoration: underline; }
   .tabela-wrap { overflow-x: auto; }
   table { min-width: 480px; }
   .modal { min-width: unset; width: 95vw; padding: 20px 16px; }
-  .tabela-header { flex-wrap: wrap; gap: 8px; }
 }
 </style>
 {% block head %}{% endblock %}
 </head>
 <body>
+
 {% if current_user.is_authenticated %}
-<nav>
-  <div class="marca">Contratos <span>SMS Sobral</span></div>
-  <button class="nav-toggle" onclick="document.querySelector('.nav-links').classList.toggle('aberto')" aria-label="Menu">
-    <span></span><span></span><span></span>
-  </button>
-  <div class="nav-links">
-    <a href="{{ url_for('dashboard') }}">Dashboard</a>
-    <a href="{{ url_for('procedimentos') }}">Procedimentos</a>
-    <a href="{{ url_for('itens_contrato') }}">Itens do Contrato</a>
-    <a href="{{ url_for('eletivas_federais') }}">Eletivas Federais 2026</a>
-    <a href="{{ url_for('licencas') }}">Licenças / Alvarás</a>
+<!-- Overlay mobile -->
+<div class="sidebar-overlay" id="overlay" onclick="fecharSidebar()"></div>
+
+<!-- SIDEBAR -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-marca">
+    <img src="/static/logo.png" alt="Logo" class="logo-img">
+    <h1>Monitoramento de Contratos</h1>
+    <p>CODR</p>
+  </div>
+  <nav class="sidebar-nav">
+    <span class="grupo">Principal</span>
+    <a href="{{ url_for('dashboard') }}">🏠 Dashboard</a>
+    <a href="{{ url_for('procedimentos') }}">📊 Procedimentos</a>
+    <a href="{{ url_for('itens_contrato') }}">📋 Itens do Contrato</a>
+    <a href="{{ url_for('eletivas_federais') }}">🏥 Eletivas Federais 2026</a>
+    <a href="{{ url_for('licencas') }}">📄 Licenças / Alvarás</a>
     {% if current_user.admin %}
-    <a href="{{ url_for('admin_contratos') }}">Contratos</a>
-    <a href="{{ url_for('admin_usuarios') }}">Usuários</a>
-    <a href="{{ url_for('auditoria') }}">Auditoria</a>
+    <div class="sep"></div>
+    <span class="grupo">Administração</span>
+    <a href="{{ url_for('admin_contratos') }}">📁 Contratos</a>
+    <a href="{{ url_for('admin_usuarios') }}">👥 Usuários</a>
+    <a href="{{ url_for('auditoria') }}">🔍 Auditoria</a>
     {% endif %}
-    <div class="spacer"></div>
-    <span class="user">{{ current_user.nome }}</span>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="user-nome">{{ current_user.nome }}</div>
     <a href="{{ url_for('logout') }}">Sair</a>
   </div>
-</nav>
+</aside>
+
+<!-- TOPBAR mobile -->
+<div class="topbar">
+  <button class="hamburger" onclick="abrirSidebar()" aria-label="Menu">
+    <span></span><span></span><span></span>
+  </button>
+  <span class="marca">Contratos SMS Sobral</span>
+</div>
+
+<script>
+function abrirSidebar() {
+  document.getElementById('sidebar').classList.add('aberta');
+  document.getElementById('overlay').classList.add('aberto');
+}
+function fecharSidebar() {
+  document.getElementById('sidebar').classList.remove('aberta');
+  document.getElementById('overlay').classList.remove('aberto');
+}
+// Fecha sidebar ao clicar em link (mobile)
+document.querySelectorAll('.sidebar-nav a').forEach(a => a.addEventListener('click', fecharSidebar));
+</script>
+
+<div class="page-content">
+{% else %}
+<div class="page-content" style="margin-left:0;">
 {% endif %}
 
 <main>
@@ -194,5 +290,6 @@ a.link-contrato:hover { text-decoration: underline; }
   {% endwith %}
   {% block content %}{% endblock %}
 </main>
+</div>
 </body>
 </html>
