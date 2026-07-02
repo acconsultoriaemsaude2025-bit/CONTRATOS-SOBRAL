@@ -113,8 +113,8 @@
   <div class="card">
     <div class="rotulo">Total Empenhado</div>
     <div class="valor" style="font-size:18px;">{{ c.total_empenhado | brl }}</div>
-    {% if c.valor_contratado %}
-    <div class="sub">{{ "%.1f"|format(c.total_empenhado / c.valor_contratado * 100) }}% do contratado &nbsp;·&nbsp; {{ empenhos|length }} empenho(s)</div>
+    {% if c.valor_inicial %}
+    <div class="sub">{{ "%.1f"|format(c.total_empenhado / c.valor_inicial * 100) }}% do contratado &nbsp;·&nbsp; {{ empenhos|length }} empenho(s)</div>
     {% else %}
     <div class="sub">{{ empenhos|length }} empenho(s)</div>
     {% endif %}
