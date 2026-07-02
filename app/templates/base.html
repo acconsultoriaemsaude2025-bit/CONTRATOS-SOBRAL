@@ -20,6 +20,16 @@
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--bg); color: var(--texto); font-size: 14px; }
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: url('/static/donos.png') center center / cover no-repeat;
+  opacity: 0.25;
+  pointer-events: none;
+  z-index: 0;
+}
+.sidebar, .topbar, .page-content { position: relative; z-index: 1; }
 
 /* ── SIDEBAR ── */
 .sidebar {
