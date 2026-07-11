@@ -137,8 +137,18 @@ tfoot td { font-size:12px; font-weight:700; padding:9px 10px; border-top:2px sol
         </thead>
         <tbody>
           {% for fg, items_g in grupos.items() %}
+          {% set meta_g = items_g | map(attribute='meta_anual_val') | map('float') | sum %}
+          {% set real_g = items_g | map(attribute='total_realizado_val') | sum %}
+          {% set pct_grupo = (real_g / meta_g * 100) if meta_g > 0 else 0 %}
+          {% set bar_g = '' if pct_grupo >= 80 else ('warn' if pct_grupo >= 40 else 'low') %}
           <tr class="grupo-row">
-            <td colspan="{% if current_user.admin %}8{% else %}7{% endif %}">{{ fg }}</td>
+            <td colspan="{% if current_user.admin %}6{% else %}6{% endif %}">{{ fg }}</td>
+            <td colspan="{% if current_user.admin %}2{% else %}1{% endif %}">
+              <div class="ex-bar">
+                <div class="bar {{ bar_g }}"><span style="width:{{ [pct_grupo,100]|min }}%;"></span></div>
+                <small><strong>{{ "%.1f"|format(pct_grupo) }}%</strong></small>
+              </div>
+            </td>
           </tr>
           {% for it in items_g %}
             {% set lanc = lancamentos_mes.get(it.id) %}
