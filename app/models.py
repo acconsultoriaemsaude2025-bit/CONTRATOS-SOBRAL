@@ -344,6 +344,21 @@ class AuditLog(db.Model):
     usuario = db.relationship("Usuario", foreign_keys=[usuario_id])
 
 
+class EscalaMedica(db.Model):
+    """Escala mensal de atendimento por médico/procedimento (ofícios à Vigilância)."""
+    __tablename__ = "escalas_medicas"
+    id          = db.Column(db.Integer, primary_key=True)
+    competencia = db.Column(db.String(6), nullable=False)   # YYYYMM
+    medico      = db.Column(db.String(150), nullable=False)
+    procedimento = db.Column(db.String(200), nullable=False)
+    dias        = db.Column(db.String(120))                  # "3,10,17,24,31"
+    turno       = db.Column(db.String(20))                   # Manhã | Tarde
+    horario     = db.Column(db.String(20))                   # "07:30"
+    qtd_vagas   = db.Column(db.Integer, default=0)
+    observacao  = db.Column(db.Text)
+    criado_em   = db.Column(db.DateTime, default=datetime.utcnow)
+
+
 class SIAArquivo(db.Model):
     """Controla quais arquivos DBC já foram importados."""
     __tablename__ = "sia_arquivos"

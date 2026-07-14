@@ -1,0 +1,237 @@
+{% extends "base.html" %}
+{% block title %}Escalas Médicas{% endblock %}
+
+{% block head %}
+<style>
+.esc-topo { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; flex-wrap:wrap; gap:10px; }
+.esc-topo h1 { font-size:19px; font-weight:700; }
+.esc-topo p  { font-size:12px; color:#64748b; margin-top:2px; }
+
+.medico-bloco { background:rgba(255,255,255,0.85); border-radius:10px; box-shadow:0 1px 3px rgba(0,0,0,.08); margin-bottom:20px; overflow:hidden; }
+.medico-head { background:var(--azul); color:#fff; padding:12px 18px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; }
+.medico-head h2 { font-size:14px; font-weight:700; letter-spacing:.3px; }
+.medico-head .tot { font-size:11px; opacity:.8; }
+.medico-bloco table { width:100%; border-collapse:collapse; }
+.medico-bloco th { background:#f8fafc; font-size:10px; text-transform:uppercase; letter-spacing:.4px; color:#64748b; padding:8px 12px; text-align:left; border-bottom:2px solid #e2e8f0; }
+.medico-bloco td { padding:9px 12px; border-bottom:1px solid #f1f5f9; font-size:12px; vertical-align:middle; }
+.medico-bloco tr:last-child td { border-bottom:none; }
+.dias-chips { display:flex; flex-wrap:wrap; gap:3px; }
+.dia-chip { background:#e0ecf7; color:#1a4a6b; border-radius:5px; padding:1px 6px; font-size:11px; font-weight:600; }
+.turno-badge { display:inline-block; padding:2px 8px; border-radius:10px; font-size:10px; font-weight:600; }
+.turno-manha { background:#fef9c3; color:#854d0e; }
+.turno-tarde { background:#ede9fe; color:#6d28d9; }
+.obs-txt { font-size:11px; color:#dc2626; font-weight:600; }
+
+.comp-bar { background:rgba(255,255,255,0.85); border-radius:8px; padding:12px 16px; box-shadow:0 1px 3px rgba(0,0,0,.07); margin-bottom:16px; display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+.comp-bar label { font-size:12px; font-weight:700; color:#64748b; }
+.comp-bar select { padding:6px 10px; border:1px solid #e2e8f0; border-radius:6px; font-size:13px; }
+
+.modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:400; align-items:center; justify-content:center; }
+.modal-overlay.aberto { display:flex; }
+.modal { background:#fff; border-radius:12px; padding:24px; width:100%; max-width:520px; box-shadow:0 20px 50px rgba(0,0,0,.2); max-height:92vh; overflow-y:auto; }
+.modal h3 { font-size:15px; font-weight:700; margin-bottom:16px; }
+.campo { margin-bottom:12px; }
+.campo label { display:block; font-size:11px; font-weight:600; color:#64748b; margin-bottom:3px; }
+.campo input, .campo select, .campo textarea { width:100%; padding:7px 10px; border:1px solid #e2e8f0; border-radius:6px; font-size:13px; font-family:inherit; }
+.campo input:focus, .campo textarea:focus { outline:none; border-color:#2563a8; }
+.grid2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.grid3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; }
+.modal-footer { display:flex; gap:8px; justify-content:flex-end; margin-top:16px; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="esc-topo">
+  <div>
+    <h1>Escalas Médicas</h1>
+    <p>Controle interno — marcação de exames e consultas por médico (ofícios à Vigilância)</p>
+  </div>
+  <button class="btn btn-azul btn-sm" onclick="abrirModalAdd()">+ Nova Escala</button>
+</div>
+
+<div class="comp-bar">
+  <label>Competência:</label>
+  <select onchange="window.location='{{ url_for('escalas') }}?comp='+this.value">
+    {% for c in competencias_disp %}
+    <option value="{{ c }}" {% if c == comp_sel %}selected{% endif %}>{{ c[4:] }}/{{ c[:4] }}</option>
+    {% endfor %}
+    {% if comp_sel not in competencias_disp %}
+    <option value="{{ comp_sel }}" selected>{{ comp_sel[4:] }}/{{ comp_sel[:4] }}</option>
+    {% endif %}
+  </select>
+  <span style="font-size:11px;color:#94a3b8;">{{ total_escalas }} escala(s) nesta competência</span>
+</div>
+
+{% if medicos %}
+  {% for medico, escalas_m in medicos.items() %}
+  <div class="medico-bloco">
+    <div class="medico-head">
+      <h2>👨‍⚕️ {{ medico }}</h2>
+      <span class="tot">{{ escalas_m|length }} escala(s) · {{ escalas_m|sum(attribute='qtd_vagas') }} vagas no mês</span>
+    </div>
+    <div style="overflow-x:auto;">
+    <table>
+      <thead>
+        <tr>
+          <th>Procedimento</th>
+          <th>Dias do mês</th>
+          <th style="width:80px;">Turno</th>
+          <th style="width:70px;">Horário</th>
+          <th style="width:60px;text-align:right;">Vagas</th>
+          <th>Observação</th>
+          <th style="width:70px;"></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for e in escalas_m %}
+        <tr>
+          <td style="font-weight:600;">{{ e.procedimento }}</td>
+          <td>
+            <div class="dias-chips">
+              {% for d in e.dias.split(',') if d.strip() %}
+              <span class="dia-chip">{{ d.strip() }}</span>
+              {% endfor %}
+            </div>
+          </td>
+          <td>
+            {% if e.turno %}
+            <span class="turno-badge {{ 'turno-manha' if 'anh' in e.turno else 'turno-tarde' }}">{{ e.turno }}</span>
+            {% endif %}
+          </td>
+          <td>{{ e.horario }}</td>
+          <td style="text-align:right;font-weight:700;">{{ e.qtd_vagas }}</td>
+          <td><span class="obs-txt">{{ e.observacao or '' }}</span></td>
+          <td>
+            <div style="display:flex;gap:4px;">
+              <button class="btn btn-cinza btn-sm" title="Editar" onclick='abrirModalEdit({{ {
+                "id": e.id, "medico": e.medico, "procedimento": e.procedimento,
+                "dias": e.dias, "turno": e.turno, "horario": e.horario,
+                "qtd_vagas": e.qtd_vagas, "observacao": e.observacao or ""
+              } | tojson }})'>✎</button>
+              <form method="post" action="{{ url_for('escala_delete', eid=e.id) }}" style="display:inline;" onsubmit="return confirm('Excluir esta escala?')">
+                <button class="btn btn-vermelho btn-sm" title="Excluir">×</button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+  </div>
+  {% endfor %}
+{% else %}
+<div style="text-align:center; padding:60px; color:#94a3b8; background:rgba(255,255,255,.7); border-radius:14px;">
+  <div style="font-size:40px; margin-bottom:12px;">🗓️</div>
+  <div style="font-size:16px; font-weight:600;">Nenhuma escala nesta competência</div>
+  <div class="sub-texto">Clique em <strong>+ Nova Escala</strong> para cadastrar.</div>
+</div>
+{% endif %}
+
+{# ===== MODAL ADD/EDIT ===== #}
+<div class="modal-overlay" id="modal-escala">
+  <div class="modal">
+    <h3 id="modal-titulo">Nova Escala</h3>
+    <form method="post" id="form-escala" action="{{ url_for('escala_add') }}">
+      <div class="campo" id="campo-comp">
+        <label>Competência (mês)</label>
+        <input type="month" name="competencia" id="f-comp" value="{{ comp_sel[:4] }}-{{ comp_sel[4:] }}" required>
+      </div>
+      <div class="campo">
+        <label>Médico(a)</label>
+        <input type="text" name="medico" id="f-medico" list="lista-medicos" placeholder="Ex: DR. RONALDO REZENDE JORDÃO NETO" required>
+        <datalist id="lista-medicos">
+          <option value="RONALDO REZENDE JORDÃO NETO">
+          <option value="WERQUITON FERREIRA FILHO">
+          <option value="CARLA AGUIAR DE SOUSA REZENDE">
+        </datalist>
+      </div>
+      <div class="campo">
+        <label>Procedimento</label>
+        <input type="text" name="procedimento" id="f-proc" list="lista-procs" placeholder="Ex: MAPEAMENTO DE RETINA" required>
+        <datalist id="lista-procs">
+          <option value="CONSULTA OFTALMOLÓGICA">
+          <option value="MAPEAMENTO DE RETINA">
+          <option value="CAMPIMETRIA COMPUTADORIZADA">
+          <option value="TOPOGRAFIA CORNEANA">
+          <option value="BIOMETRIA">
+          <option value="MICROSCOPIA ESPECULAR">
+          <option value="RETINOGRAFIA COLORIDA">
+          <option value="PAQUIMETRIA">
+          <option value="TONOMETRIA">
+          <option value="GONIOSCOPIA">
+          <option value="FUNDOSCOPIA">
+          <option value="CERATOMETRIA">
+          <option value="BIOMICROSCOPIA DE FUNDO DE OLHO">
+          <option value="POTENCIAL DE ACUIDADE VISUAL">
+          <option value="TESTE DE VISÃO DE CORES">
+          <option value="TESTE P/ ADAPTAÇÃO DE LENTE DE CONTATO">
+          <option value="TOMOGRAFIA DE COERÊNCIA ÓPTICA">
+          <option value="CAPSULOTOMIA A YAG LASER">
+          <option value="TRATAMENTO CIRÚRGICO DE PTERÍGIO">
+          <option value="FACOEMULSIFICAÇÃO C/ IMPLANTE DE LIO">
+        </datalist>
+      </div>
+      <div class="campo">
+        <label>Dias do mês (separados por vírgula)</label>
+        <input type="text" name="dias" id="f-dias" placeholder="Ex: 3,10,17,24,31" required>
+      </div>
+      <div class="grid3">
+        <div class="campo">
+          <label>Turno</label>
+          <select name="turno" id="f-turno">
+            <option value="Manhã">Manhã</option>
+            <option value="Tarde">Tarde</option>
+          </select>
+        </div>
+        <div class="campo">
+          <label>Horário</label>
+          <input type="text" name="horario" id="f-horario" placeholder="Ex: 07:30">
+        </div>
+        <div class="campo">
+          <label>Vagas</label>
+          <input type="number" name="qtd_vagas" id="f-vagas" min="0" placeholder="0" required>
+        </div>
+      </div>
+      <div class="campo">
+        <label>Observação</label>
+        <input type="text" name="observacao" id="f-obs" placeholder="Ex: NÃO MARCAR PACIENTES DE REFERENCIADO">
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-cinza" onclick="document.getElementById('modal-escala').classList.remove('aberto')">Cancelar</button>
+        <button type="submit" class="btn btn-azul" id="btn-salvar">Salvar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function abrirModalAdd() {
+  const f = document.getElementById('form-escala');
+  f.reset();
+  f.action = "{{ url_for('escala_add') }}";
+  document.getElementById('modal-titulo').textContent = 'Nova Escala';
+  document.getElementById('campo-comp').style.display = '';
+  document.getElementById('f-comp').value = "{{ comp_sel[:4] }}-{{ comp_sel[4:] }}";
+  document.getElementById('modal-escala').classList.add('aberto');
+}
+function abrirModalEdit(e) {
+  const f = document.getElementById('form-escala');
+  f.action = "/escalas/" + e.id + "/edit";
+  document.getElementById('modal-titulo').textContent = 'Editar Escala';
+  document.getElementById('campo-comp').style.display = 'none';
+  document.getElementById('f-medico').value  = e.medico;
+  document.getElementById('f-proc').value    = e.procedimento;
+  document.getElementById('f-dias').value    = e.dias;
+  document.getElementById('f-turno').value   = e.turno || 'Manhã';
+  document.getElementById('f-horario').value = e.horario || '';
+  document.getElementById('f-vagas').value   = e.qtd_vagas;
+  document.getElementById('f-obs').value     = e.observacao || '';
+  document.getElementById('modal-escala').classList.add('aberto');
+}
+document.getElementById('modal-escala').addEventListener('click', function(ev) {
+  if (ev.target === this) this.classList.remove('aberto');
+});
+</script>
+{% endblock %}

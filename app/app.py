@@ -2,7 +2,7 @@ import click
 from flask import Flask, render_template, jsonify, redirect, url_for, request, flash
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from config import Config
-from models import db, Usuario, Contrato, Empenho, Liquidacao, Pagamento, AuditLog
+from models import db, Usuario, Contrato, Empenho, Liquidacao, Pagamento, AuditLog, EscalaMedica
 from scraper.sync import sync_contrato
 from alerts.telegram import enviar, formatar_novidades
 from sqlalchemy import func
@@ -942,6 +942,80 @@ def create_app():
             download_name=l.arquivo_nome,
             as_attachment=False,
         )
+
+    # ---------- ESCALAS MÉDICAS ----------
+    @app.route("/escalas")
+    @login_required
+    def escalas():
+        db.create_all()
+        comps = [c[0] for c in db.session.query(EscalaMedica.competencia)
+                 .distinct().order_by(EscalaMedica.competencia.desc()).all()]
+        hoje = dt.date.today()
+        comp_padrao = f"{hoje.year}{hoje.month:02d}"
+        comp_sel = request.args.get("comp") or (comps[0] if comps else comp_padrao)
+        itens = (EscalaMedica.query.filter_by(competencia=comp_sel)
+                 .order_by(EscalaMedica.medico, EscalaMedica.procedimento, EscalaMedica.horario).all())
+        medicos = {}
+        for e in itens:
+            medicos.setdefault(e.medico, []).append(e)
+        return render_template("escalas.html",
+            medicos=medicos, competencias_disp=comps, comp_sel=comp_sel,
+            total_escalas=len(itens))
+
+    @app.route("/escalas/add", methods=["POST"])
+    @login_required
+    def escala_add():
+        e = EscalaMedica(
+            competencia = request.form.get("competencia", "").replace("-", ""),
+            medico      = request.form.get("medico", "").strip().upper(),
+            procedimento = request.form.get("procedimento", "").strip().upper(),
+            dias        = request.form.get("dias", "").strip(),
+            turno       = request.form.get("turno", ""),
+            horario     = request.form.get("horario", "").strip(),
+            qtd_vagas   = int(request.form.get("qtd_vagas") or 0),
+            observacao  = request.form.get("observacao", "").strip(),
+        )
+        db.session.add(e)
+        db.session.flush()
+        registrar_auditoria("criar", "escala_medica", e.id,
+            f"Escala {e.competencia}: {e.medico} — {e.procedimento} dias {e.dias} {e.turno} {e.horario} ({e.qtd_vagas} vagas)")
+        db.session.commit()
+        flash("Escala cadastrada.", "ok")
+        return redirect(url_for("escalas", comp=e.competencia))
+
+    @app.route("/escalas/<int:eid>/edit", methods=["POST"])
+    @login_required
+    def escala_edit(eid):
+        e = db.session.get(EscalaMedica, eid)
+        if not e:
+            flash("Escala não encontrada.", "erro")
+            return redirect(url_for("escalas"))
+        e.medico      = request.form.get("medico", e.medico).strip().upper()
+        e.procedimento = request.form.get("procedimento", e.procedimento).strip().upper()
+        e.dias        = request.form.get("dias", e.dias).strip()
+        e.turno       = request.form.get("turno", e.turno)
+        e.horario     = request.form.get("horario", e.horario).strip()
+        e.qtd_vagas   = int(request.form.get("qtd_vagas") or 0)
+        e.observacao  = request.form.get("observacao", "").strip()
+        registrar_auditoria("editar", "escala_medica", e.id,
+            f"Escala {e.competencia}: {e.medico} — {e.procedimento} dias {e.dias} {e.turno} {e.horario} ({e.qtd_vagas} vagas)")
+        db.session.commit()
+        flash("Escala atualizada.", "ok")
+        return redirect(url_for("escalas", comp=e.competencia))
+
+    @app.route("/escalas/<int:eid>/delete", methods=["POST"])
+    @login_required
+    def escala_delete(eid):
+        e = db.session.get(EscalaMedica, eid)
+        if e:
+            registrar_auditoria("excluir", "escala_medica", e.id,
+                f"Escala {e.competencia}: {e.medico} — {e.procedimento}")
+            comp = e.competencia
+            db.session.delete(e)
+            db.session.commit()
+            flash("Escala excluída.", "ok")
+            return redirect(url_for("escalas", comp=comp))
+        return redirect(url_for("escalas"))
 
     # ---------- AUDITORIA ----------
     @app.route("/auditoria")
