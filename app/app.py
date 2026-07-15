@@ -1237,6 +1237,29 @@ def create_app():
         logs = AuditLog.query.order_by(AuditLog.criado_em.desc()).limit(500).all()
         return render_template("auditoria.html", logs=logs)
 
+    # ---------- SYNC AUTOMÁTICO EM BACKGROUND (a cada 15 min) ----------
+    def _sync_periodico():
+        import time, traceback
+        time.sleep(60)  # espera o app subir
+        while True:
+            try:
+                with app.app_context():
+                    alvos = Contrato.query.filter_by(ativo=True).all()
+                    for c in alvos:
+                        try:
+                            sync_contrato(c.numero, c.orgao)
+                        except Exception as e:
+                            print(f"[sync-auto][erro] {c.numero}: {e}")
+                    print(f"[sync-auto] {len(alvos)} contrato(s) sincronizado(s).")
+            except Exception:
+                traceback.print_exc()
+            time.sleep(15 * 60)
+
+    import threading, os as _os
+    if _os.environ.get("SYNC_AUTO", "1") == "1":
+        t = threading.Thread(target=_sync_periodico, daemon=True)
+        t.start()
+
     # ---------- CLI ----------
     @app.cli.command("init-db")
     def init_db():
