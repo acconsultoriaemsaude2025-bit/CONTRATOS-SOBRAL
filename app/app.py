@@ -1245,12 +1245,17 @@ def create_app():
             try:
                 with app.app_context():
                     alvos = Contrato.query.filter_by(ativo=True).all()
+                    todas = []
                     for c in alvos:
                         try:
-                            sync_contrato(c.numero, c.orgao)
+                            _, novidades = sync_contrato(c.numero, c.orgao)
+                            todas += novidades
                         except Exception as e:
                             print(f"[sync-auto][erro] {c.numero}: {e}")
-                    print(f"[sync-auto] {len(alvos)} contrato(s) sincronizado(s).")
+                    print(f"[sync-auto] {len(alvos)} contrato(s) sincronizado(s), {len(todas)} novidade(s).")
+                    msg = formatar_novidades(todas)
+                    if msg:
+                        enviar(msg)
             except Exception:
                 traceback.print_exc()
             time.sleep(15 * 60)
