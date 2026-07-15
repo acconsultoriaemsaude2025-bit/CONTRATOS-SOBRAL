@@ -1003,6 +1003,102 @@ def create_app():
         flash("Escala atualizada.", "ok")
         return redirect(url_for("escalas", comp=e.competencia))
 
+    @app.route("/escalas/importar", methods=["POST"])
+    @login_required
+    def escalas_importar():
+        """Importa escalas de um arquivo Excel.
+        Colunas esperadas (1ª linha = cabeçalho, em qualquer ordem):
+        COMPETENCIA | MEDICO | PROCEDIMENTO | DIAS | TURNO | HORARIO | VAGAS | OBSERVACAO
+        """
+        arq = request.files.get("arquivo_excel")
+        if not arq or not arq.filename:
+            flash("Selecione um arquivo Excel (.xlsx).", "erro")
+            return redirect(url_for("escalas"))
+        try:
+            from openpyxl import load_workbook
+            import io, unicodedata
+
+            def norm(s):
+                s = str(s or "").strip().upper()
+                return "".join(c for c in unicodedata.normalize("NFD", s)
+                               if unicodedata.category(c) != "Mn")
+
+            wb = load_workbook(io.BytesIO(arq.read()), data_only=True)
+            ws = wb.active
+            linhas = list(ws.iter_rows(values_only=True))
+            if not linhas:
+                flash("Planilha vazia.", "erro")
+                return redirect(url_for("escalas"))
+
+            cab = [norm(c) for c in linhas[0]]
+            ALIAS = {
+                "competencia": ["COMPETENCIA", "COMP", "MES", "COMPETENCIA (AAAAMM)"],
+                "medico":      ["MEDICO", "MEDICO(A)", "PROFISSIONAL", "DR", "DOUTOR"],
+                "procedimento": ["PROCEDIMENTO", "EXAME", "PROC", "DESCRICAO"],
+                "dias":        ["DIAS", "DIAS DO MES", "DIA", "DATAS"],
+                "turno":       ["TURNO", "PERIODO"],
+                "horario":     ["HORARIO", "HORA", "HORARIOS"],
+                "qtd_vagas":   ["VAGAS", "QTD", "QTD VAGAS", "QUANTIDADE"],
+                "observacao":  ["OBSERVACAO", "OBS", "OBSERVACOES"],
+            }
+            idx = {}
+            for campo, nomes in ALIAS.items():
+                for n in nomes:
+                    if n in cab:
+                        idx[campo] = cab.index(n)
+                        break
+            faltando = [c for c in ("medico", "procedimento", "dias") if c not in idx]
+            if faltando:
+                flash(f"Colunas obrigatórias não encontradas: {', '.join(faltando).upper()}. "
+                      "Use cabeçalhos: COMPETENCIA, MEDICO, PROCEDIMENTO, DIAS, TURNO, HORARIO, VAGAS, OBSERVACAO.", "erro")
+                return redirect(url_for("escalas"))
+
+            hoje = dt.date.today()
+            comp_padrao = request.form.get("comp_padrao") or f"{hoje.year}{hoje.month:02d}"
+
+            def get(row, campo, default=""):
+                i = idx.get(campo)
+                if i is None or i >= len(row):
+                    return default
+                v = row[i]
+                return default if v is None else v
+
+            n = 0
+            for row in linhas[1:]:
+                medico = str(get(row, "medico")).strip().upper()
+                proc   = str(get(row, "procedimento")).strip().upper()
+                if not medico or not proc:
+                    continue
+                comp = str(get(row, "competencia", comp_padrao)).strip().replace("-", "").replace("/", "")
+                if len(comp) == 6 and comp[:2].isdigit() and not comp.startswith("20"):
+                    comp = comp[2:] + comp[:2]   # MMYYYY -> YYYYMM
+                if len(comp) != 6 or not comp.isdigit():
+                    comp = comp_padrao
+                dias = str(get(row, "dias")).strip().replace(";", ",").replace(" ", "")
+                hor  = get(row, "horario")
+                if hasattr(hor, "strftime"):
+                    hor = hor.strftime("%H:%M")
+                try:
+                    vagas = int(float(get(row, "qtd_vagas", 0) or 0))
+                except Exception:
+                    vagas = 0
+                db.session.add(EscalaMedica(
+                    competencia=comp, medico=medico, procedimento=proc,
+                    dias=dias, turno=str(get(row, "turno")).strip().capitalize(),
+                    horario=str(hor).strip(), qtd_vagas=vagas,
+                    observacao=str(get(row, "observacao")).strip(),
+                ))
+                n += 1
+            db.session.flush()
+            registrar_auditoria("criar", "escala_medica", None,
+                f"Importação Excel '{arq.filename}': {n} escalas")
+            db.session.commit()
+            flash(f"{n} escala(s) importada(s) do Excel.", "ok")
+        except Exception as e:
+            db.session.rollback()
+            flash(f"Erro ao importar: {e}", "erro")
+        return redirect(url_for("escalas"))
+
     @app.route("/escalas/<int:eid>/delete", methods=["POST"])
     @login_required
     def escala_delete(eid):

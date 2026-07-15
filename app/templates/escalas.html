@@ -47,7 +47,10 @@
     <h1>Escalas Médicas</h1>
     <p>Controle interno — marcação de exames e consultas por médico (ofícios à Vigilância)</p>
   </div>
-  <button class="btn btn-azul btn-sm" onclick="abrirModalAdd()">+ Nova Escala</button>
+  <div style="display:flex; gap:8px;">
+    <button class="btn btn-cinza btn-sm" onclick="document.getElementById('modal-importar').classList.add('aberto')">⬆ Importar Excel</button>
+    <button class="btn btn-azul btn-sm" onclick="abrirModalAdd()">+ Nova Escala</button>
+  </div>
 </div>
 
 <div class="comp-bar">
@@ -206,6 +209,34 @@
   </div>
 </div>
 
+{# ===== MODAL IMPORTAR EXCEL ===== #}
+<div class="modal-overlay" id="modal-importar">
+  <div class="modal">
+    <h3>Importar Escalas do Excel</h3>
+    <form method="post" action="{{ url_for('escalas_importar') }}" enctype="multipart/form-data">
+      <div class="campo">
+        <label>Arquivo Excel (.xlsx)</label>
+        <input type="file" name="arquivo_excel" accept=".xlsx,.xlsm" required>
+      </div>
+      <div class="campo">
+        <label>Competência padrão (usada se a planilha não tiver a coluna COMPETENCIA)</label>
+        <input type="month" name="comp_padrao_mes" id="f-comp-padrao-mes" value="{{ comp_sel[:4] }}-{{ comp_sel[4:] }}"
+               onchange="document.getElementById('f-comp-padrao').value = this.value.replace('-','')">
+        <input type="hidden" name="comp_padrao" id="f-comp-padrao" value="{{ comp_sel }}">
+      </div>
+      <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px 14px; font-size:12px; color:#475569; margin-bottom:14px;">
+        <strong>Formato esperado</strong> — 1ª linha com os cabeçalhos (em qualquer ordem):<br>
+        <code style="font-size:11px;">MEDICO · PROCEDIMENTO · DIAS · TURNO · HORARIO · VAGAS · OBSERVACAO · COMPETENCIA</code><br>
+        <span style="color:#94a3b8;">Obrigatórios: MEDICO, PROCEDIMENTO e DIAS (ex: 3,10,17,24,31). TURNO: Manhã ou Tarde.</span>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-cinza" onclick="document.getElementById('modal-importar').classList.remove('aberto')">Cancelar</button>
+        <button type="submit" class="btn btn-azul">Importar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <script>
 function abrirModalAdd() {
   const f = document.getElementById('form-escala');
@@ -230,8 +261,10 @@ function abrirModalEdit(e) {
   document.getElementById('f-obs').value     = e.observacao || '';
   document.getElementById('modal-escala').classList.add('aberto');
 }
-document.getElementById('modal-escala').addEventListener('click', function(ev) {
-  if (ev.target === this) this.classList.remove('aberto');
+document.querySelectorAll('.modal-overlay').forEach(function(m) {
+  m.addEventListener('click', function(ev) {
+    if (ev.target === this) this.classList.remove('aberto');
+  });
 });
 </script>
 {% endblock %}
