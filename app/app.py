@@ -1113,6 +1113,120 @@ def create_app():
             return redirect(url_for("escalas", comp=comp))
         return redirect(url_for("escalas"))
 
+    # ---------- CONFERÊNCIA ESCALA × EXECUÇÃO ----------
+    def _dias_da_escala(e):
+        """Converte '3,10,17' -> [3, 10, 17]."""
+        out = []
+        for p in (e.dias or "").split(","):
+            p = p.strip()
+            if p.isdigit():
+                out.append(int(p))
+        return out
+
+    @app.route("/escalas/conferencia")
+    @login_required
+    def escalas_conferencia():
+        from models import ExecucaoDiaria
+        import calendar as _cal
+        db.create_all()
+
+        hoje = dt.date.today()
+        comp_sel = request.args.get("comp") or f"{hoje.year}{hoje.month:02d}"
+        ano, mes = int(comp_sel[:4]), int(comp_sel[4:])
+        dias_no_mes = _cal.monthrange(ano, mes)[1]
+
+        escalas_mes = EscalaMedica.query.filter_by(competencia=comp_sel).all()
+        execs = ExecucaoDiaria.query.filter_by(competencia=comp_sel).all()
+
+        # vagas planejadas por dia e por (medico, proc)
+        plano_dia = {}     # {dia: {(medico, proc): vagas}}
+        for e in escalas_mes:
+            for d in _dias_da_escala(e):
+                plano_dia.setdefault(d, {})
+                chave = (e.medico, e.procedimento)
+                plano_dia[d][chave] = plano_dia[d].get(chave, 0) + (e.qtd_vagas or 0)
+
+        exec_dia = {}      # {dia: {(medico, proc): ExecucaoDiaria}}
+        for x in execs:
+            exec_dia.setdefault(x.dia, {})[(x.medico, x.procedimento)] = x
+
+        # resumo do calendário: total vagas × total executado por dia
+        calendario = []
+        for d in range(1, dias_no_mes + 1):
+            vagas = sum(plano_dia.get(d, {}).values())
+            feito = sum(x.qtd_executada or 0 for x in exec_dia.get(d, {}).values())
+            pct = round(feito / vagas * 100) if vagas else None
+            calendario.append({
+                "dia": d,
+                "semana": _cal.weekday(ano, mes, d),   # 0=segunda
+                "vagas": vagas, "feito": feito, "pct": pct,
+            })
+
+        # detalhe do dia selecionado
+        dia_sel = request.args.get("dia", type=int) or hoje.day
+        dia_sel = max(1, min(dia_sel, dias_no_mes))
+        linhas = []
+        chaves = set(plano_dia.get(dia_sel, {})) | set(exec_dia.get(dia_sel, {}))
+        for (medico, proc) in sorted(chaves):
+            x = exec_dia.get(dia_sel, {}).get((medico, proc))
+            linhas.append({
+                "medico": medico, "procedimento": proc,
+                "vagas": plano_dia.get(dia_sel, {}).get((medico, proc), 0),
+                "executado": x.qtd_executada if x else None,
+                "observacao": x.observacao if x else "",
+            })
+
+        comps = [c[0] for c in db.session.query(EscalaMedica.competencia)
+                 .distinct().order_by(EscalaMedica.competencia.desc()).all()]
+        tot_vagas = sum(c["vagas"] for c in calendario)
+        tot_feito = sum(c["feito"] for c in calendario)
+        return render_template("conferencia.html",
+            calendario=calendario, comp_sel=comp_sel, competencias_disp=comps,
+            dia_sel=dia_sel, linhas=linhas, ano=ano, mes=mes,
+            tot_vagas=tot_vagas, tot_feito=tot_feito,
+            pct_mes=round(tot_feito / tot_vagas * 100, 1) if tot_vagas else 0)
+
+    @app.route("/escalas/conferencia/salvar", methods=["POST"])
+    @login_required
+    def escalas_conferencia_salvar():
+        from models import ExecucaoDiaria
+        comp = request.form.get("competencia")
+        dia  = int(request.form.get("dia") or 0)
+        n = 0
+        for k, v in request.form.items():
+            if not k.startswith("exec__"):
+                continue
+            # exec__<medico>||<procedimento>
+            try:
+                medico, proc = k[6:].split("||", 1)
+            except ValueError:
+                continue
+            v = v.strip()
+            obs = request.form.get(f"obs__{medico}||{proc}", "").strip()
+            x = ExecucaoDiaria.query.filter_by(
+                competencia=comp, dia=dia, medico=medico, procedimento=proc).first()
+            if v == "" and not obs:
+                if x:
+                    db.session.delete(x)
+                    n += 1
+                continue
+            qtd = int(v or 0)
+            if x:
+                if x.qtd_executada != qtd or (x.observacao or "") != obs:
+                    x.qtd_executada, x.observacao = qtd, obs
+                    n += 1
+            else:
+                db.session.add(ExecucaoDiaria(
+                    competencia=comp, dia=dia, medico=medico,
+                    procedimento=proc, qtd_executada=qtd, observacao=obs))
+                n += 1
+        if n:
+            registrar_auditoria("lancar", "execucao_diaria", None,
+                f"Conferência {dia:02d}/{comp[4:]}/{comp[:4]}: {n} lançamento(s)")
+        db.session.commit()
+        flash(f"Conferência do dia {dia:02d} salva ({n} alteração(ões)).", "ok")
+        return redirect(url_for("escalas_conferencia", comp=comp, dia=dia))
+
     # ---------- AUDITORIA ----------
     @app.route("/auditoria")
     @login_required

@@ -359,6 +359,23 @@ class EscalaMedica(db.Model):
     criado_em   = db.Column(db.DateTime, default=datetime.utcnow)
 
 
+class ExecucaoDiaria(db.Model):
+    """Produção executada por dia — conferência contra a escala médica."""
+    __tablename__ = "execucoes_diarias"
+    id            = db.Column(db.Integer, primary_key=True)
+    competencia   = db.Column(db.String(6), nullable=False, index=True)  # YYYYMM
+    dia           = db.Column(db.Integer, nullable=False)                # 1-31
+    medico        = db.Column(db.String(150), nullable=False)
+    procedimento  = db.Column(db.String(200), nullable=False)
+    qtd_executada = db.Column(db.Integer, default=0)
+    observacao    = db.Column(db.Text)
+    criado_em     = db.Column(db.DateTime, default=datetime.utcnow)
+    atualizado_em = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (db.UniqueConstraint("competencia", "dia", "medico", "procedimento",
+                                          name="uq_exec_diaria"),)
+
+
 class SIAArquivo(db.Model):
     """Controla quais arquivos DBC já foram importados."""
     __tablename__ = "sia_arquivos"

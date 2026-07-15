@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+{% block title %}Conferência de Produção{% endblock %}
+
+{% block head %}
+<style>
+.cf-topo { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; flex-wrap:wrap; gap:10px; }
+.cf-topo h1 { font-size:19px; font-weight:700; }
+.cf-topo p  { font-size:12px; color:#64748b; margin-top:2px; }
+
+.cf-bar { background:rgba(255,255,255,0.88); border-radius:8px; padding:12px 16px; box-shadow:0 1px 3px rgba(0,0,0,.07); margin-bottom:16px; display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+.cf-bar label { font-size:12px; font-weight:700; color:#64748b; }
+.cf-bar select { padding:6px 10px; border:1px solid #e2e8f0; border-radius:6px; font-size:13px; }
+.resumo-mes { margin-left:auto; display:flex; gap:16px; font-size:12px; color:#475569; }
+.resumo-mes b { font-size:14px; }
+
+/* ── CALENDÁRIO ── */
+.cal-wrap { background:rgba(255,255,255,0.88); border-radius:10px; box-shadow:0 1px 3px rgba(0,0,0,.08); padding:16px; margin-bottom:20px; }
+.cal-grid { display:grid; grid-template-columns:repeat(7, 1fr); gap:6px; }
+.cal-head { font-size:10px; font-weight:700; color:#64748b; text-transform:uppercase; text-align:center; padding:4px 0; }
+.cal-dia {
+  border:1.5px solid #e2e8f0; border-radius:8px; padding:6px 7px; min-height:62px;
+  cursor:pointer; text-decoration:none; color:inherit; display:block;
+  transition:border-color .12s, box-shadow .12s; background:#fff;
+}
+.cal-dia:hover { border-color:#2563a8; box-shadow:0 2px 6px rgba(37,99,168,.15); }
+.cal-dia.sel { border-color:#1a4a6b; border-width:2.5px; }
+.cal-dia.vazio { background:#f8fafc; cursor:default; opacity:.55; }
+.cal-dia .num { font-size:13px; font-weight:700; color:#1e293b; }
+.cal-dia .info { font-size:10px; color:#64748b; margin-top:3px; line-height:1.35; }
+.cal-dia .pct { display:inline-block; margin-top:3px; font-size:10px; font-weight:700; padding:1px 6px; border-radius:8px; }
+.pct-ok    { background:#dcfce7; color:#15803d; }
+.pct-meio  { background:#fef9c3; color:#854d0e; }
+.pct-baixo { background:#fee2e2; color:#b91c1c; }
+.pct-zero  { background:#f1f5f9; color:#64748b; }
+
+/* ── DETALHE DO DIA ── */
+.dia-wrap { background:rgba(255,255,255,0.92); border-radius:10px; box-shadow:0 1px 3px rgba(0,0,0,.08); overflow:hidden; }
+.dia-head { background:var(--azul); color:#fff; padding:13px 18px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; }
+.dia-head h2 { font-size:14px; font-weight:700; }
+.dia-wrap table { width:100%; border-collapse:collapse; }
+.dia-wrap th { background:#f8fafc; font-size:10px; text-transform:uppercase; letter-spacing:.4px; color:#64748b; padding:9px 12px; text-align:left; border-bottom:2px solid #e2e8f0; }
+.dia-wrap td { padding:9px 12px; border-bottom:1px solid #f1f5f9; font-size:12px; vertical-align:middle; }
+.dia-wrap tr:last-child td { border-bottom:none; }
+.inp-exec { width:75px; padding:6px 8px; border:1px solid #e2e8f0; border-radius:5px; font-size:13px; text-align:center; }
+.inp-exec:focus { outline:none; border-color:#2563a8; background:#eff6ff; }
+.inp-obs { width:100%; min-width:140px; padding:6px 8px; border:1px solid #e2e8f0; border-radius:5px; font-size:12px; }
+.dif-pos { color:#15803d; font-weight:700; }
+.dif-neg { color:#b91c1c; font-weight:700; }
+.dif-zero { color:#64748b; font-weight:600; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="cf-topo">
+  <div>
+    <h1>Conferência de Produção</h1>
+    <p>Escala médica × execução diária — controle interno</p>
+  </div>
+  <a href="{{ url_for('escalas', comp=comp_sel) }}" class="btn btn-cinza btn-sm">← Escalas</a>
+</div>
+
+<div class="cf-bar">
+  <label>Competência:</label>
+  <select onchange="window.location='{{ url_for('escalas_conferencia') }}?comp='+this.value">
+    {% for c in competencias_disp %}
+    <option value="{{ c }}" {% if c == comp_sel %}selected{% endif %}>{{ c[4:] }}/{{ c[:4] }}</option>
+    {% endfor %}
+    {% if comp_sel not in competencias_disp %}
+    <option value="{{ comp_sel }}" selected>{{ comp_sel[4:] }}/{{ comp_sel[:4] }}</option>
+    {% endif %}
+  </select>
+  <div class="resumo-mes">
+    <span>Escalado no mês: <b>{{ tot_vagas | format_number }}</b></span>
+    <span>Executado: <b>{{ tot_feito | format_number }}</b></span>
+    <span>Execução: <b>{{ pct_mes }}%</b></span>
+  </div>
+</div>
+
+{# ===== CALENDÁRIO DO MÊS ===== #}
+<div class="cal-wrap">
+  <div class="cal-grid">
+    {% for nome in ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'] %}
+    <div class="cal-head">{{ nome }}</div>
+    {% endfor %}
+
+    {# células vazias antes do dia 1 #}
+    {% for _ in range(calendario[0].semana) %}
+    <div></div>
+    {% endfor %}
+
+    {% for c in calendario %}
+    {% if c.vagas > 0 %}
+    <a class="cal-dia {{ 'sel' if c.dia == dia_sel }}"
+       href="{{ url_for('escalas_conferencia', comp=comp_sel, dia=c.dia) }}">
+      <span class="num">{{ c.dia }}</span>
+      <div class="info">{{ c.feito }}/{{ c.vagas }}</div>
+      {% if c.pct is not none %}
+        {% set cls = 'pct-ok' if c.pct >= 90 else ('pct-meio' if c.pct >= 50 else ('pct-baixo' if c.feito > 0 else 'pct-zero')) %}
+        <span class="pct {{ cls }}">{{ c.pct }}%</span>
+      {% endif %}
+    </a>
+    {% else %}
+    <div class="cal-dia vazio">
+      <span class="num">{{ c.dia }}</span>
+      <div class="info">sem escala</div>
+    </div>
+    {% endif %}
+    {% endfor %}
+  </div>
+</div>
+
+{# ===== DETALHE DO DIA ===== #}
+<div class="dia-wrap">
+  <div class="dia-head">
+    <h2>📋 Conferência do dia {{ "%02d"|format(dia_sel) }}/{{ comp_sel[4:] }}/{{ comp_sel[:4] }}</h2>
+    {% if linhas %}
+    <span style="font-size:11px;opacity:.85;">{{ linhas|length }} item(ns) escalado(s)</span>
+    {% endif %}
+  </div>
+
+  {% if linhas %}
+  <form method="post" action="{{ url_for('escalas_conferencia_salvar') }}">
+    <input type="hidden" name="competencia" value="{{ comp_sel }}">
+    <input type="hidden" name="dia" value="{{ dia_sel }}">
+    <div style="overflow-x:auto;">
+    <table>
+      <thead>
+        <tr>
+          <th>Médico</th>
+          <th>Procedimento</th>
+          <th style="text-align:right;width:80px;">Escalado</th>
+          <th style="text-align:center;width:100px;">Executado</th>
+          <th style="text-align:center;width:90px;">Diferença</th>
+          <th>Observação</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for l in linhas %}
+        <tr>
+          <td style="font-weight:600;white-space:nowrap;">{{ l.medico }}</td>
+          <td>{{ l.procedimento }}</td>
+          <td style="text-align:right;font-weight:700;">{{ l.vagas }}</td>
+          <td style="text-align:center;">
+            <input type="number" min="0" class="inp-exec"
+                   name="exec__{{ l.medico }}||{{ l.procedimento }}"
+                   value="{{ l.executado if l.executado is not none else '' }}"
+                   placeholder="—"
+                   data-vagas="{{ l.vagas }}"
+                   oninput="calcDif(this)">
+          </td>
+          <td style="text-align:center;">
+            <span class="dif"></span>
+          </td>
+          <td>
+            <input type="text" class="inp-obs"
+                   name="obs__{{ l.medico }}||{{ l.procedimento }}"
+                   value="{{ l.observacao }}"
+                   placeholder="Ex: falta de paciente, remarcação...">
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+    <div style="padding:14px 18px; display:flex; justify-content:flex-end; gap:8px; border-top:1px solid #e2e8f0;">
+      <button type="submit" class="btn btn-azul">💾 Salvar Conferência do Dia</button>
+    </div>
+  </form>
+  {% else %}
+  <div style="text-align:center; padding:44px; color:#94a3b8;">
+    Nenhuma escala para este dia. Selecione outro dia no calendário.
+  </div>
+  {% endif %}
+</div>
+
+<script>
+function calcDif(inp) {
+  var vagas = parseInt(inp.dataset.vagas || 0);
+  var span = inp.closest('tr').querySelector('.dif');
+  if (inp.value === '') { span.textContent = ''; span.className = 'dif'; return; }
+  var d = parseInt(inp.value || 0) - vagas;
+  span.textContent = (d > 0 ? '+' : '') + d;
+  span.className = 'dif ' + (d === 0 ? 'dif-zero' : (d > 0 ? 'dif-pos' : 'dif-neg'));
+}
+document.querySelectorAll('.inp-exec').forEach(calcDif);
+</script>
+{% endblock %}

@@ -48,6 +48,7 @@
     <p>Controle interno — marcação de exames e consultas por médico (ofícios à Vigilância)</p>
   </div>
   <div style="display:flex; gap:8px;">
+    <a href="{{ url_for('escalas_conferencia', comp=comp_sel) }}" class="btn btn-cinza btn-sm">📋 Conferência de Produção</a>
     <button class="btn btn-cinza btn-sm" onclick="document.getElementById('modal-importar').classList.add('aberto')">⬆ Importar Excel</button>
     <button class="btn btn-azul btn-sm" onclick="abrirModalAdd()">+ Nova Escala</button>
   </div>
