@@ -1168,7 +1168,15 @@ def create_app():
             vagas = sum(plano_dia.get(d, {}).values())
             feito = sum(x.qtd_executada or 0 for x in exec_dia.get(d, {}).values())
             agend = sum(x.qtd_agendada or 0 for x in exec_dia.get(d, {}).values())
-            base = agend if agend else vagas
+            # base do dia: por linha, usa o agendado SMS quando informado; senão o escalado
+            base = 0
+            chaves_d = set(plano_dia.get(d, {})) | set(exec_dia.get(d, {}))
+            for ch in chaves_d:
+                x = exec_dia.get(d, {}).get(ch)
+                if x and x.qtd_agendada is not None:
+                    base += x.qtd_agendada
+                else:
+                    base += plano_dia.get(d, {}).get(ch, 0)
             pct = round(feito / base * 100) if base else None
             calendario.append({
                 "dia": d,
