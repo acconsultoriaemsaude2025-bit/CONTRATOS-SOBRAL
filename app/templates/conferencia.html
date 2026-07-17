@@ -72,8 +72,13 @@
   </select>
   <div class="resumo-mes">
     <span>Escalado no mês: <b>{{ tot_vagas | format_number }}</b></span>
+    <span>Agendado SMS: <b>{{ tot_agend | format_number if tot_agend else '—' }}</b></span>
     <span>Executado: <b>{{ tot_feito | format_number }}</b></span>
+    {% if abst_mes is not none %}
+    <span>Absenteísmo: <b style="color:{{ '#b91c1c' if abst_mes > 20 else '#15803d' }};">{{ abst_mes }}%</b></span>
+    {% else %}
     <span>Execução: <b>{{ pct_mes }}%</b></span>
+    {% endif %}
   </div>
 </div>
 
@@ -129,9 +134,11 @@
         <tr>
           <th>Médico</th>
           <th>Procedimento</th>
-          <th style="text-align:right;width:80px;">Escalado</th>
+          <th style="text-align:right;width:75px;">Escalado</th>
+          <th style="text-align:center;width:100px;">Agendado/SMS</th>
           <th style="text-align:center;width:100px;">Executado</th>
-          <th style="text-align:center;width:90px;">Diferença</th>
+          <th style="text-align:center;width:80px;">Faltas</th>
+          <th style="text-align:center;width:95px;">Absenteísmo</th>
           <th>Observação</th>
         </tr>
       </thead>
@@ -142,6 +149,13 @@
           <td>{{ l.procedimento }}</td>
           <td style="text-align:right;font-weight:700;">{{ l.vagas }}</td>
           <td style="text-align:center;">
+            <input type="number" min="0" class="inp-exec inp-agend"
+                   name="agend__{{ l.medico }}||{{ l.procedimento }}"
+                   value="{{ l.agendado if l.agendado is not none else '' }}"
+                   placeholder="—"
+                   oninput="calcDif(this)">
+          </td>
+          <td style="text-align:center;">
             <input type="number" min="0" class="inp-exec"
                    name="exec__{{ l.medico }}||{{ l.procedimento }}"
                    value="{{ l.executado if l.executado is not none else '' }}"
@@ -151,6 +165,9 @@
           </td>
           <td style="text-align:center;">
             <span class="dif"></span>
+          </td>
+          <td style="text-align:center;">
+            <span class="abst"></span>
           </td>
           <td>
             <input type="text" class="inp-obs"
@@ -176,13 +193,34 @@
 
 <script>
 function calcDif(inp) {
-  var vagas = parseInt(inp.dataset.vagas || 0);
-  var span = inp.closest('tr').querySelector('.dif');
-  if (inp.value === '') { span.textContent = ''; span.className = 'dif'; return; }
-  var d = parseInt(inp.value || 0) - vagas;
-  span.textContent = (d > 0 ? '+' : '') + d;
-  span.className = 'dif ' + (d === 0 ? 'dif-zero' : (d > 0 ? 'dif-pos' : 'dif-neg'));
+  var tr = inp.closest('tr');
+  var agendInp = tr.querySelector('.inp-agend');
+  var execInp  = tr.querySelector('.inp-exec:not(.inp-agend)');
+  var difSpan  = tr.querySelector('.dif');
+  var abstSpan = tr.querySelector('.abst');
+
+  var agend = agendInp.value === '' ? null : parseInt(agendInp.value || 0);
+  var exec  = execInp.value  === '' ? null : parseInt(execInp.value  || 0);
+
+  // Faltas e absenteísmo calculados sobre o AGENDADO PELO SMS
+  if (agend === null || exec === null) {
+    difSpan.textContent = ''; difSpan.className = 'dif';
+    abstSpan.textContent = ''; abstSpan.className = 'abst';
+    return;
+  }
+  var faltas = agend - exec;
+  difSpan.textContent = faltas;
+  difSpan.className = 'dif ' + (faltas <= 0 ? 'dif-zero' : 'dif-neg');
+
+  if (agend > 0) {
+    var pct = Math.round(faltas / agend * 1000) / 10;
+    if (pct < 0) pct = 0;
+    abstSpan.textContent = pct + '%';
+    abstSpan.className = 'abst ' + (pct === 0 ? 'dif-zero' : (pct <= 20 ? 'dif-pos' : 'dif-neg'));
+  } else {
+    abstSpan.textContent = '—'; abstSpan.className = 'abst dif-zero';
+  }
 }
-document.querySelectorAll('.inp-exec').forEach(calcDif);
+document.querySelectorAll('.inp-exec:not(.inp-agend)').forEach(calcDif);
 </script>
 {% endblock %}

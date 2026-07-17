@@ -1129,6 +1129,18 @@ def create_app():
         from models import ExecucaoDiaria
         import calendar as _cal
         db.create_all()
+        try:
+            db.session.execute(db.text(
+                "ALTER TABLE execucoes_diarias ADD COLUMN IF NOT EXISTS qtd_agendada INTEGER"))
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            try:  # SQLite não aceita IF NOT EXISTS
+                db.session.execute(db.text(
+                    "ALTER TABLE execucoes_diarias ADD COLUMN qtd_agendada INTEGER"))
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
 
         hoje = dt.date.today()
         comp_sel = request.args.get("comp") or f"{hoje.year}{hoje.month:02d}"
@@ -1150,16 +1162,18 @@ def create_app():
         for x in execs:
             exec_dia.setdefault(x.dia, {})[(x.medico, x.procedimento)] = x
 
-        # resumo do calendário: total vagas × total executado por dia
+        # resumo do calendário: vagas × agendado SMS × executado por dia
         calendario = []
         for d in range(1, dias_no_mes + 1):
             vagas = sum(plano_dia.get(d, {}).values())
             feito = sum(x.qtd_executada or 0 for x in exec_dia.get(d, {}).values())
-            pct = round(feito / vagas * 100) if vagas else None
+            agend = sum(x.qtd_agendada or 0 for x in exec_dia.get(d, {}).values())
+            base = agend if agend else vagas
+            pct = round(feito / base * 100) if base else None
             calendario.append({
                 "dia": d,
                 "semana": _cal.weekday(ano, mes, d),   # 0=segunda
-                "vagas": vagas, "feito": feito, "pct": pct,
+                "vagas": vagas, "feito": feito, "agend": agend, "pct": pct,
             })
 
         # detalhe do dia selecionado
@@ -1172,6 +1186,7 @@ def create_app():
             linhas.append({
                 "medico": medico, "procedimento": proc,
                 "vagas": plano_dia.get(dia_sel, {}).get((medico, proc), 0),
+                "agendado": x.qtd_agendada if x else None,
                 "executado": x.qtd_executada if x else None,
                 "observacao": x.observacao if x else "",
             })
@@ -1180,10 +1195,14 @@ def create_app():
                  .distinct().order_by(EscalaMedica.competencia.desc()).all()]
         tot_vagas = sum(c["vagas"] for c in calendario)
         tot_feito = sum(c["feito"] for c in calendario)
+        tot_agend = sum(c["agend"] for c in calendario)
+        # absenteísmo do mês: faltas sobre o agendado pelo SMS
+        abst_mes = round((tot_agend - tot_feito) / tot_agend * 100, 1) if tot_agend else None
         return render_template("conferencia.html",
             calendario=calendario, comp_sel=comp_sel, competencias_disp=comps,
             dia_sel=dia_sel, linhas=linhas, ano=ano, mes=mes,
-            tot_vagas=tot_vagas, tot_feito=tot_feito,
+            tot_vagas=tot_vagas, tot_feito=tot_feito, tot_agend=tot_agend,
+            abst_mes=abst_mes,
             pct_mes=round(tot_feito / tot_vagas * 100, 1) if tot_vagas else 0)
 
     @app.route("/escalas/conferencia/salvar", methods=["POST"])
@@ -1203,22 +1222,24 @@ def create_app():
                 continue
             v = v.strip()
             obs = request.form.get(f"obs__{medico}||{proc}", "").strip()
+            ag  = request.form.get(f"agend__{medico}||{proc}", "").strip()
             x = ExecucaoDiaria.query.filter_by(
                 competencia=comp, dia=dia, medico=medico, procedimento=proc).first()
-            if v == "" and not obs:
+            if v == "" and ag == "" and not obs:
                 if x:
                     db.session.delete(x)
                     n += 1
                 continue
-            qtd = int(v or 0)
+            qtd   = int(v or 0)
+            agend = int(ag) if ag != "" else None
             if x:
-                if x.qtd_executada != qtd or (x.observacao or "") != obs:
-                    x.qtd_executada, x.observacao = qtd, obs
+                if x.qtd_executada != qtd or x.qtd_agendada != agend or (x.observacao or "") != obs:
+                    x.qtd_executada, x.qtd_agendada, x.observacao = qtd, agend, obs
                     n += 1
             else:
                 db.session.add(ExecucaoDiaria(
-                    competencia=comp, dia=dia, medico=medico,
-                    procedimento=proc, qtd_executada=qtd, observacao=obs))
+                    competencia=comp, dia=dia, medico=medico, procedimento=proc,
+                    qtd_agendada=agend, qtd_executada=qtd, observacao=obs))
                 n += 1
         if n:
             registrar_auditoria("lancar", "execucao_diaria", None,

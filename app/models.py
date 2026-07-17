@@ -367,6 +367,7 @@ class ExecucaoDiaria(db.Model):
     dia           = db.Column(db.Integer, nullable=False)                # 1-31
     medico        = db.Column(db.String(150), nullable=False)
     procedimento  = db.Column(db.String(200), nullable=False)
+    qtd_agendada  = db.Column(db.Integer)                    # agendado pelo SMS
     qtd_executada = db.Column(db.Integer, default=0)
     observacao    = db.Column(db.Text)
     criado_em     = db.Column(db.DateTime, default=datetime.utcnow)
